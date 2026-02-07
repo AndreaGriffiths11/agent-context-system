@@ -3,7 +3,7 @@
 # Sets up the local agent scratchpad and agent tool integrations.
 # Run once per clone. Safe to re-run.
 
-set -e
+set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 LOCAL_FILE="$REPO_ROOT/.agents.local.md"
@@ -56,17 +56,23 @@ setup_claude() {
     elif [ -f "$target" ]; then
         # Existing CLAUDE.md — append pointer instead of replacing
         if ! grep -q "AGENTS.md" "$target"; then
-            echo "" >> "$target"
-            echo "## Agent Context" >> "$target"
-            echo "Read \`AGENTS.md\` and \`.agents.local.md\` (if it exists) before starting any task." >> "$target"
-            echo "Follow the self-updating protocol defined in \`AGENTS.md\`." >> "$target"
+            {
+                echo ""
+                echo "## Agent Context"
+                echo "Read \`AGENTS.md\` and \`.agents.local.md\` (if it exists) before starting any task."
+                echo "Follow the self-updating protocol defined in \`AGENTS.md\`."
+            } >> "$target"
             echo "  [ok] Added agent context section to existing CLAUDE.md."
         else
             echo "  [ok] CLAUDE.md already references AGENTS.md."
         fi
     else
-        ln -s AGENTS.md "$target"
-        echo "  [ok] Created CLAUDE.md -> AGENTS.md symlink."
+        if [ -f "$REPO_ROOT/AGENTS.md" ]; then
+            ln -s AGENTS.md "$target"
+            echo "  [ok] Created CLAUDE.md -> AGENTS.md symlink."
+        else
+            echo "  [skip] AGENTS.md not found — skipping CLAUDE.md symlink."
+        fi
     fi
     echo ""
     echo "  Note: Claude Code has built-in auto memory (~/.claude/projects/<project>/memory/)."
@@ -118,10 +124,12 @@ setup_copilot() {
         return
     fi
     if [ -f "$target" ]; then
-        echo "" >> "$target"
-        echo "## Agent Context" >> "$target"
-        echo "Read \`AGENTS.md\` and \`.agents.local.md\` (if it exists) before starting any task." >> "$target"
-        echo "Follow the self-updating protocol defined in \`AGENTS.md\`." >> "$target"
+        {
+            echo ""
+            echo "## Agent Context"
+            echo "Read \`AGENTS.md\` and \`.agents.local.md\` (if it exists) before starting any task."
+            echo "Follow the self-updating protocol defined in \`AGENTS.md\`."
+        } >> "$target"
         echo "  [ok] Added agent context to existing copilot-instructions.md."
     else
         cat > "$target" << 'EOF'
