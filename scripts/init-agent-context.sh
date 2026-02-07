@@ -3,7 +3,7 @@
 # Sets up the local agent scratchpad and agent tool integrations.
 # Run once per clone. Safe to re-run.
 
-set -e
+set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 LOCAL_FILE="$REPO_ROOT/.agents.local.md"
@@ -65,8 +65,12 @@ setup_claude() {
             echo "  [ok] CLAUDE.md already references AGENTS.md."
         fi
     else
-        ln -s AGENTS.md "$target"
-        echo "  [ok] Created CLAUDE.md -> AGENTS.md symlink."
+        if [ -f "$REPO_ROOT/AGENTS.md" ]; then
+            ln -s AGENTS.md "$target"
+            echo "  [ok] Created CLAUDE.md -> AGENTS.md symlink."
+        else
+            echo "  [skip] AGENTS.md not found — skipping CLAUDE.md symlink."
+        fi
     fi
     echo ""
     echo "  Note: Claude Code has built-in auto memory (~/.claude/projects/<project>/memory/)."
