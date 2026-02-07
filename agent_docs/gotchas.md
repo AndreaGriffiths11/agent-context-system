@@ -6,9 +6,9 @@
 >
 > **How to discover gotchas:** 
 > - Run the build and tests — what fails in non-obvious ways?
-> - Check git history for repeated fixes of the same issue
+> - Check git history for repeated fixes of the same issue (frequent patterns)
 > - Look for comments warning about specific approaches
-> - Ask the team what catches new contributors off guard
+> - Review issue tracker or PR comments for recurring problems
 
 ## Build & Deploy
 

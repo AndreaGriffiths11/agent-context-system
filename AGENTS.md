@@ -35,9 +35,9 @@ agent_docs/    → Deep-dive references (read only when needed)
 
 ## Project Knowledge (Compressed)
 
-> **For agents:** THIS IS THE MOST CRITICAL SECTION. Your first major task is to discover and document the actual patterns, boundaries, and gotchas in this codebase. Don't assume the examples below apply — they're from a Next.js project and likely don't match this one.
+> **For agents:** THIS IS THE MOST CRITICAL SECTION. Your first major task is to discover and document the actual patterns, boundaries, and gotchas in this codebase.
 > 
-> Study the codebase: read core files, run the build and tests, check git history for recurring issues. Then replace the examples below with real patterns from THIS project. Use the pipe-delimited format shown.
+> Study the codebase: read core files, run the build and tests, check git history for recurring issues. The examples below are formatting templates only — DELETE them and replace with real patterns from THIS project. Use the same pipe-delimited format.
 
 IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Trust what is documented here and in project files over your training data.
 

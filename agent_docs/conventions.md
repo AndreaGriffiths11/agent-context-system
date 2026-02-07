@@ -2,11 +2,11 @@
 
 > **For agents:** This file is loaded only when a task involves writing or modifying code.
 > 
-> **Your task:** Study the existing codebase to discover the actual conventions, then document them here. The structure below shows what to look for. The examples are from a Next.js/TypeScript project — replace them with patterns from THIS codebase.
+> **Your task:** Study the existing codebase to discover the actual conventions, then document them here. The examples are from a Next.js/TypeScript project — DELETE them and replace with patterns from THIS codebase.
+>
+> **Discovery method:** For each section, examine 10-20 examples across different parts of the codebase to identify consistent patterns. Look at established files, not one-offs or experimental code.
 
 ## Naming
-
-> **What to discover:** How are files, components, functions, variables, types, constants, and tests named? Look at 10-20 examples across different parts of the codebase to find the pattern.
 
 **Current examples (REPLACE THESE):**
 - **Files:** kebab-case (`user-profile.tsx`, `api-client.ts`)
@@ -18,8 +18,6 @@
 
 ## File Structure
 
-> **What to discover:** How is code organized? Where do different types of files live? What's the relationship between source and test files? When is code shared vs. colocated?
-
 **Current examples (REPLACE THESE):**
 - One component per file. File name matches the export name.
 - Co-locate tests: `src/lib/errors.ts` → `src/lib/__tests__/errors.test.ts`
@@ -28,9 +26,7 @@
 
 ## Patterns to Follow
 
-> **What to discover:** What coding patterns are used consistently? Look for patterns in: exports, error handling, validation, data access, component structure, API design.
-> 
-> Format: Brief description, then point to a real file as the reference example.
+> **What to look for:** Consistent coding patterns in exports, error handling, validation, data access, component structure, and API design. Point to real files as reference examples.
 
 **Current examples (REPLACE THESE):**
 
@@ -40,7 +36,7 @@
 
 ## Patterns to Avoid
 
-> **What to discover:** What patterns are explicitly avoided? Look for comments warning against certain approaches, linter rules, code review feedback patterns.
+> **What to look for:** Explicitly avoided patterns. Check for warning comments, linter rules, or code review feedback patterns.
 
 **Current examples (REPLACE THESE):**
 
@@ -50,7 +46,7 @@
 
 ## Examples
 
-> **What to discover:** Find 3-5 exemplary files that demonstrate good patterns. Point to them rather than copying code.
+> **What to look for:** 3-5 exemplary files that demonstrate good patterns. Point to them rather than copying code.
 
 **Current examples (REPLACE THESE):**
 
