@@ -25,14 +25,17 @@ your-repo/
 │   ├── conventions.md
 │   ├── architecture.md
 │   └── gotchas.md
-├── docs/                        # Diagrams and visual references.
-│   ├── subagent-context.svg
-│   └── subagent-context.excalidraw
+├── examples/
+│   └── AGENTS-filled.md         # Real-world example of a filled-in AGENTS.md.
 ├── scripts/
-│   ├── init-agent-context.sh       # Setup: scratchpad + symlink. No questions asked.
-│   ├── promote.sh                   # Analyzes scratchpad, suggests promotions.
-│   ├── publish-template.sh
-│   └── agents-local-template.md
+│   ├── init-agent-context.sh    # Setup: scratchpad + symlink. Safe to re-run.
+│   ├── promote.sh               # Analyzes scratchpad, suggests promotions.
+│   ├── compress.sh              # Reports scratchpad stats, helps with compression.
+│   ├── validate.sh              # Checks for remaining placeholder content.
+│   ├── publish-template.sh      # Publishes template to GitHub.
+│   └── agents-local-template.md # Template for .agents.local.md.
+├── tests/
+│   └── run-tests.sh             # Integration tests for all scripts.
 └── CLAUDE.md                    # Symlink → AGENTS.md (created by init)
 ```
 
@@ -109,6 +112,28 @@ It does three things:
 
 Output is formatted for easy copy-paste into AGENTS.md's pipe-delimited sections. The script makes suggestions. You still make the call.
 
+### Compression tooling
+
+When `.agents.local.md` grows past 300 lines, it's time to compress. The `compress.sh` script helps:
+
+```bash
+./scripts/compress.sh           # Analyze section sizes and find duplicates
+./scripts/compress.sh --backup  # Create a timestamped backup first
+```
+
+It reports line counts per section, finds duplicate entries across sessions, identifies promotion candidates, and gives you a compression checklist. It doesn't rewrite the file automatically — compression requires judgment about what to keep.
+
+### Placeholder validation
+
+The template ships with placeholder content to show the expected format. After you fill in your project's actual details, verify you haven't missed anything:
+
+```bash
+./scripts/validate.sh           # Full report with line numbers
+./scripts/validate.sh --quiet   # Summary only (useful in CI)
+```
+
+Exits with code 0 if clean, 1 if placeholders remain. See `examples/AGENTS-filled.md` for a reference of what a completed file looks like.
+
 ## Quick start
 
 ### New repo from template
@@ -154,7 +179,9 @@ If your team uses multiple agents (which is increasingly common — GitHub just 
 
 This is the thing that made me rethink the whole template.
 
-![Diagram showing AGENTS.md as the only shared context flowing to parallel subagents. Conversation history is blocked. The scratchpad only flows if AGENTS.md explicitly tells subagents to read it.](docs/subagent-context.svg)
+<p align="center">
+  <img src="docs/subagent-context.svg" alt="Diagram showing AGENTS.md as the only shared context flowing to parallel subagents. Conversation history is blocked. The scratchpad only flows if AGENTS.md explicitly tells subagents to read it." width="780" />
+</p>
 
 Claude Code now ships subagents. You can spawn parallel agents that explore your codebase, review code, write tests, and debug — all at the same time, each in its own context window. Copilot CLI just shipped `/fleet` in experimental mode (February 5, 2026), which dispatches parallel subagents with a sqlite database tracking dependency-aware tasks. Both tools are moving toward the same model: a lead agent that coordinates a team of specialists.
 
@@ -172,11 +199,13 @@ That playbook is AGENTS.md.
 
 ## After setup
 
-1. **Edit `AGENTS.md`.** Fill in your project name, stack, commands. Replace the example patterns, boundaries, and gotchas with real ones from your codebase. The template ships with realistic examples (Next.js/Prisma stack) to show the format and level of detail expected — swap them for your own.
+1. **Edit `AGENTS.md`.** Fill in your project name, stack, commands. Replace the example patterns, boundaries, and gotchas with real ones from your codebase. See `examples/AGENTS-filled.md` for a reference of what a completed file looks like.
 2. **Edit `agent_docs/`.** The templates ship with worked examples. Replace them with your project's architecture, conventions, and gotchas. Delete sections that don't apply.
 3. **Customize `.agents.local.md`.** Add your preferences.
 4. **Work.** The agent reads everything, does the task, updates the scratchpad.
-5. **Promote what sticks.** Run `./scripts/promote.sh` periodically. It scans your scratchpad for recurring patterns and suggests items to promote into AGENTS.md. You decide what moves.
+5. **Validate.** Run `./scripts/validate.sh` to check for any remaining placeholder content you missed.
+6. **Promote what sticks.** Run `./scripts/promote.sh` periodically. It scans your scratchpad for recurring patterns and suggests items to promote into AGENTS.md. You decide what moves.
+7. **Compress when needed.** Run `./scripts/compress.sh` when the scratchpad grows past 300 lines.
 
 ## Sources
 

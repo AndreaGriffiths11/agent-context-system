@@ -21,8 +21,29 @@ else
         cp "$TEMPLATE" "$LOCAL_FILE"
         echo "[ok] Created .agents.local.md from template."
     else
-        echo "[!!] Template not found at $TEMPLATE"
-        exit 1
+        # Fallback: create a minimal scratchpad if the template wasn't copied.
+        # This handles the case where someone copies AGENTS.md manually without
+        # the full scripts/ directory.
+        cat > "$LOCAL_FILE" << 'FALLBACK_EOF'
+# .agents.local.md — Local Agent Scratchpad
+
+> Gitignored. Never committed. Persistent memory across agent sessions.
+
+## Preferences
+
+## Patterns
+
+## Gotchas
+
+## Dead Ends
+
+## Ready to Promote
+
+## Session Log
+
+## Compression Log
+FALLBACK_EOF
+        echo "[ok] Created minimal .agents.local.md (template not found, used fallback)."
     fi
 fi
 
