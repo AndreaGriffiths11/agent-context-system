@@ -29,7 +29,8 @@ your-repo/
 │   ├── subagent-context.svg
 │   └── subagent-context.excalidraw
 ├── scripts/
-│   ├── init-agent-context.sh
+│   ├── init-agent-context.sh       # Setup: scratchpad + symlink. No questions asked.
+│   ├── promote.sh                   # Analyzes scratchpad, suggests promotions.
 │   ├── publish-template.sh
 │   └── agents-local-template.md
 └── CLAUDE.md                    # Symlink → AGENTS.md (created by init)
@@ -93,6 +94,21 @@ Session notes → .agents.local.md → agent flags stable patterns → you promo
 
 The scratchpad is where things are still experimental. AGENTS.md is where proven knowledge lives. The agent flags candidates. You make the call.
 
+### Promotion tooling
+
+The `promote.sh` script reduces the friction of this process. Instead of manually reading through your scratchpad looking for patterns, run:
+
+```bash
+./scripts/promote.sh
+```
+
+It does three things:
+1. **Shows flagged items** — anything already in the "Ready to Promote" section
+2. **Finds recurring themes** — scans session logs for words/phrases appearing in 3+ sessions
+3. **Diffs against AGENTS.md** — identifies scratchpad entries not yet reflected in the root file
+
+Output is formatted for easy copy-paste into AGENTS.md's pipe-delimited sections. The script makes suggestions. You still make the call.
+
 ## Quick start
 
 ### New repo from template
@@ -117,18 +133,16 @@ chmod +x scripts/publish-template.sh
 
 ## Agent compatibility
 
-The init script asks which tools you use and wires up the right config:
+AGENTS.md is the cross-platform standard. Cursor, Copilot, Codex, Windsurf, and Factory all read it natively — no config files needed. The init script just creates a `CLAUDE.md` symlink for Claude Code compatibility.
 
-| Agent | What gets created |
+| Agent | Setup |
 |---|---|
-| Claude Code | `CLAUDE.md` symlink → `AGENTS.md` |
-| Cursor | `.cursorrules` pointing to `AGENTS.md` |
-| Windsurf | `.windsurfrules` pointing to `AGENTS.md` |
-| GitHub Copilot | `.github/copilot-instructions.md` pointing to `AGENTS.md` |
+| Cursor, Copilot, Codex, Windsurf, Factory | Reads `AGENTS.md` natively. Nothing to configure. |
+| Claude Code | `CLAUDE.md` symlink → `AGENTS.md` (created by init script) |
 
 ### A note on Claude Code
 
-Claude Code still reads CLAUDE.md, not AGENTS.md. The feature request is open but as of February 2026 it hasn't shipped. The init script creates a symlink so you maintain one file.
+Claude Code still reads CLAUDE.md, not AGENTS.md. The feature request is open but as of February 2026 it hasn't shipped. The init script creates a symlink so you maintain one file. When Claude Code adds AGENTS.md support, delete the symlink.
 
 Claude Code also shipped auto memory in late 2025. It creates a `~/.claude/projects/<project>/memory/` directory where Claude writes its own notes as it works and loads them at the start of each session. That's basically our `.agents.local.md` concept, built into the tool.
 
@@ -158,11 +172,11 @@ That playbook is AGENTS.md.
 
 ## After setup
 
-1. **Edit `AGENTS.md`.** Fill in your project name, stack, commands. Replace the placeholder patterns and gotchas with real ones from your codebase. This is the highest-leverage edit you'll make.
-2. **Fill in `agent_docs/`.** Add deeper references. Delete what doesn't apply.
+1. **Edit `AGENTS.md`.** Fill in your project name, stack, commands. Replace the example patterns, boundaries, and gotchas with real ones from your codebase. The template ships with realistic examples (Next.js/Prisma stack) to show the format and level of detail expected — swap them for your own.
+2. **Edit `agent_docs/`.** The templates ship with worked examples. Replace them with your project's architecture, conventions, and gotchas. Delete sections that don't apply.
 3. **Customize `.agents.local.md`.** Add your preferences.
 4. **Work.** The agent reads everything, does the task, updates the scratchpad.
-5. **Promote what sticks.** During compression, the agent flags patterns that have recurred across 3+ sessions in the scratchpad's "Ready to Promote" section. You decide when to move them into AGENTS.md.
+5. **Promote what sticks.** Run `./scripts/promote.sh` periodically. It scans your scratchpad for recurring patterns and suggests items to promote into AGENTS.md. You decide what moves.
 
 ## Sources
 
