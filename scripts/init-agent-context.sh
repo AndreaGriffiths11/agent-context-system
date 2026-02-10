@@ -5,9 +5,15 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 LOCAL_FILE="$REPO_ROOT/.agents.local.md"
-TEMPLATE="$REPO_ROOT/scripts/agents-local-template.md"
+# Look for template relative to script location first, then fallback to repo root
+if [ -f "$SCRIPT_DIR/agents-local-template.md" ]; then
+    TEMPLATE="$SCRIPT_DIR/agents-local-template.md"
+else
+    TEMPLATE="$REPO_ROOT/scripts/agents-local-template.md"
+fi
 GITIGNORE="$REPO_ROOT/.gitignore"
 
 echo "Agent Context System — Init"
