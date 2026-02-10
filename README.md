@@ -55,6 +55,12 @@ That drops a `SKILL.md` into your `.github/skills/` directory. Copilot picks it 
 
 You can also copy `github-copilot/SKILL.md` manually into `.github/skills/agent-context-system/SKILL.md` if you prefer not to use the CLI.
 
+After installing the skill, run the init script to create your local scratchpad:
+
+```bash
+bash .agents/skills/agent-context-system/scripts/init-agent-context.sh
+```
+
 <details>
 <summary><strong>What I learned building this</strong></summary>
 
@@ -127,6 +133,16 @@ cd my-project
 chmod +x scripts/init-agent-context.sh
 ./scripts/init-agent-context.sh
 ```
+
+### Installed as a skill
+
+If you installed via `npx skills add`, the scripts live inside the skill directory, not at the project root:
+
+```bash
+bash .agents/skills/agent-context-system/scripts/init-agent-context.sh
+```
+
+The init script auto-detects the skill installation and prints the correct re-run path.
 
 ### Existing repo
 

@@ -32,7 +32,11 @@ That's it. No plugins, no infrastructure, no background processes. The conventio
 Run the init script. It creates `.agents.local.md` from a template, ensures it's gitignored, and wires up your agent tool's config (CLAUDE.md symlink for Claude Code, .cursorrules for Cursor, .windsurfrules for Windsurf, copilot-instructions.md for Copilot).
 
 ```bash
+# If you cloned the template repo:
 ./scripts/init-agent-context.sh
+
+# If you installed as a skill (npx skills add):
+bash .agents/skills/agent-context-system/scripts/init-agent-context.sh
 ```
 
 Then edit `AGENTS.md` with your project specifics: name, stack, commands, actual patterns and gotchas from your codebase. This is the highest-leverage edit you'll make.
@@ -228,6 +232,14 @@ gh repo create my-project --template YOUR_USERNAME/agent-context-system --privat
 cd my-project
 chmod +x scripts/init-agent-context.sh
 ./scripts/init-agent-context.sh
+```
+
+### Installed as a skill
+
+If you installed via `npx skills add`, the scripts live inside the skill directory, not at the project root. Run from there:
+
+```bash
+bash .agents/skills/agent-context-system/scripts/init-agent-context.sh
 ```
 
 ### Existing repo

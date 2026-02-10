@@ -16,6 +16,12 @@ else
 fi
 GITIGNORE="$REPO_ROOT/.gitignore"
 
+# Detect if running from a skill installation (not from repo root scripts/)
+SKILL_INSTALL=false
+case "$SCRIPT_DIR" in
+    */.agents/skills/*|*/.github/skills/*) SKILL_INSTALL=true ;;
+esac
+
 echo "Agent Context System — Init"
 echo ""
 
@@ -181,3 +187,14 @@ echo "  1. Edit AGENTS.md — fill in your project stack and commands"
 echo "  2. Edit agent_docs/ — add conventions, architecture, gotchas"
 echo "  3. Edit .agents.local.md — add your personal preferences"
 echo "  4. Start a session with any agent. It reads, it learns, it updates."
+
+if [ "$SKILL_INSTALL" = true ]; then
+    # Get the relative path from repo root to this script
+    RELATIVE_SCRIPT="${SCRIPT_DIR#"$REPO_ROOT"/}/init-agent-context.sh"
+    echo ""
+    echo "Note: This script is installed as a skill at:"
+    echo "  $RELATIVE_SCRIPT"
+    echo ""
+    echo "To re-run in the future, use:"
+    echo "  bash $RELATIVE_SCRIPT"
+fi
