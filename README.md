@@ -21,6 +21,7 @@ That's it. No plugins, no infrastructure, no background processes. The conventio
 your-repo/
 ├── AGENTS.md                    # Committed. Always loaded. Under 120 lines.
 ├── .agents.local.md             # Gitignored. Personal scratchpad.
+├── SKILL.md                     # Copilot Custom Skill (full knowledge base).
 ├── agent_docs/                  # Deeper docs. Read only when needed.
 │   ├── conventions.md
 │   ├── architecture.md
@@ -28,14 +29,34 @@ your-repo/
 ├── docs/                        # Diagrams and visual references.
 │   ├── subagent-context.svg
 │   └── subagent-context.excalidraw
+├── github-copilot/              # Copilot-specific skill definition.
+│   └── SKILL.md
 ├── scripts/
 │   ├── init-agent-context.sh
 │   ├── publish-template.sh
 │   └── agents-local-template.md
+├── .github/
+│   └── workflows/
+│       └── shellcheck.yml       # CI: lints all shell scripts.
+├── package.json                 # Skill package metadata for npx skills.
 └── CLAUDE.md                    # Symlink → AGENTS.md (created by init)
 ```
 
-## What I learned building this
+## Install as a Copilot Custom Skill
+
+This repo is packaged as a <a href="https://code.visualstudio.com/docs/copilot/customization/agent-skills">Copilot Custom Skill</a>. You can install it directly into any project so Copilot learns the agent context system patterns.
+
+```bash
+# Install the skill into your current project
+npx skills add AndreaGriffiths11/agent-context-system
+```
+
+That drops a `SKILL.md` into your `.github/skills/` directory. Copilot picks it up automatically when the skill description matches your prompt context. In VS Code, make sure `chat.useAgentSkills` is enabled.
+
+You can also copy `github-copilot/SKILL.md` manually into `.github/skills/agent-context-system/SKILL.md` if you prefer not to use the CLI.
+
+<details>
+<summary><strong>What I learned building this</strong></summary>
 
 I'm going to walk you through the research because understanding the _why_ matters more than copying the files. These are fundamentals. If you understand them, you can adapt the template to your own setup instead of treating it like a black box.
 
@@ -79,6 +100,9 @@ Anthropic's Agent Skills architecture loads context in tiers: metadata first, fu
 ### One file works across every tool
 
 AGENTS.md is the cross-platform standard now. Cursor, Copilot, Codex, Windsurf, Factory all recognize it. Claude Code still only reads CLAUDE.md — the feature request to add AGENTS.md support is open but hasn't shipped as of February 2026. The init script creates a symlink so you maintain one file.
+
+</details>
+
 
 ## How knowledge moves between the files
 
@@ -140,7 +164,7 @@ If your team uses multiple agents (which is increasingly common — GitHub just 
 
 This is the thing that made me rethink the whole template.
 
-![Diagram showing AGENTS.md as the only shared context flowing to parallel subagents. Conversation history is blocked. The scratchpad only flows if AGENTS.md explicitly tells subagents to read it.](docs/subagent-context.svg)
+<img>
 
 Claude Code now ships subagents. You can spawn parallel agents that explore your codebase, review code, write tests, and debug — all at the same time, each in its own context window. Copilot CLI just shipped `/fleet` in experimental mode (February 5, 2026), which dispatches parallel subagents with a sqlite database tracking dependency-aware tasks. Both tools are moving toward the same model: a lead agent that coordinates a team of specialists.
 
@@ -156,6 +180,10 @@ Claude Code's subagent ecosystem is already maturing. You can define custom suba
 
 That playbook is AGENTS.md.
 
+## CI
+
+Shell scripts in `scripts/` are linted on every push and pull request via <a href="https://www.shellcheck.net/">ShellCheck</a>. The workflow lives in `.github/workflows/shellcheck.yml`.
+
 ## After setup
 
 1. **Edit `AGENTS.md`.** Fill in your project name, stack, commands. Replace the placeholder patterns and gotchas with real ones from your codebase. This is the highest-leverage edit you'll make.
@@ -168,15 +196,15 @@ That playbook is AGENTS.md.
 
 | What I learned | Where I learned it |
 |---|---|
-| Write/Select/Compress/Isolate framework | [LangChain — Context Engineering for Agents](https://blog.langchain.com/context-engineering-for-agents/) |
-| Instruction budgets, root file discipline | [HumanLayer — Writing a Good CLAUDE.md](https://www.humanlayer.dev/blog/writing-a-good-claude-md) |
-| What makes agents.md files actually work | [GitHub Blog — Lessons from 2,500+ Repositories](https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/) |
-| Passive context vs skill retrieval eval data | [Vercel — AGENTS.md Outperforms Skills](https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals) |
-| Three-tier progressive disclosure | [Anthropic — Equipping Agents with Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) |
-| Cross-platform standard adoption | [AI Hero — A Complete Guide to AGENTS.md](https://www.aihero.dev/a-complete-guide-to-agents-md) |
-| Subagent context isolation, custom agents | [Anthropic — Claude Code Subagents Docs](https://code.claude.com/docs/en/sub-agents) |
-| Parallel fleets with dependency-aware tasks | [Copilot CLI /fleet announcement](https://x.com/_Evan_Boyle/status/2019497961777172488) |
-| Built-in agents, auto-compaction, context mgmt | [GitHub Changelog — Copilot CLI Enhanced Agents](https://github.blog/changelog/2026-01-14-github-copilot-cli-enhanced-agents-context-management-and-new-ways-to-install/) |
+| Write/Select/Compress/Isolate framework | <a href="https://blog.langchain.com/context-engineering-for-agents/">LangChain — Context Engineering for Agents</a> |
+| Instruction budgets, root file discipline | <a href="https://www.humanlayer.dev/blog/writing-a-good-claude-md">HumanLayer — Writing a Good CLAUDE.md</a> |
+| What makes agents.md files actually work | <a href="https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/">GitHub Blog — Lessons from 2,500+ Repositories</a> |
+| Passive context vs skill retrieval eval data | <a href="https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals">Vercel — AGENTS.md Outperforms Skills</a> |
+| Three-tier progressive disclosure | <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">Anthropic — Equipping Agents with Skills</a> |
+| Cross-platform standard adoption | <a href="https://www.aihero.dev/a-complete-guide-to-agents-md">AI Hero — A Complete Guide to AGENTS.md</a> |
+| Subagent context isolation, custom agents | <a href="https://code.claude.com/docs/en/sub-agents">Anthropic — Claude Code Subagents Docs</a> |
+| Parallel fleets with dependency-aware tasks | <a href="https://x.com/_Evan_Boyle/status/2019497961777172488">Copilot CLI /fleet announcement</a> |
+| Built-in agents, auto-compaction, context mgmt | <a href="https://github.blog/changelog/2026-01-14-github-copilot-cli-enhanced-agents-context-management-and-new-ways-to-install/">GitHub Changelog — Copilot CLI Enhanced Agents</a> |
 
 ## License
 
