@@ -1,0 +1,518 @@
+#!/bin/bash
+#
+# agent-context - Unified CLI for the Agent Context System
+#
+# Commands:
+#   init      Set up context system in current project
+#   validate  Check that setup is correct
+#   promote   Find patterns to move from scratchpad to AGENTS.md
+#   help      Show this help message
+#
+# Usage:
+#   agent-context init
+#   agent-context validate
+#   agent-context promote
+#
+# Installation:
+#   clawhub install agent-context
+#   # or
+#   chmod +x agent-context && ./agent-context init
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m' # No Color
+
+# Find script directory (works even when called via symlink)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Detect if we're running from a skill installation or repo root
+if [[ -f "$SCRIPT_DIR/AGENTS.md" ]]; then
+    TEMPLATE_DIR="$SCRIPT_DIR"
+elif [[ -f "$SCRIPT_DIR/../AGENTS.md" ]]; then
+    TEMPLATE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+    TEMPLATE_DIR="$SCRIPT_DIR"
+fi
+
+# Target is always current working directory
+TARGET_DIR="$(pwd)"
+
+#
+# Utilities
+#
+
+print_header() {
+    echo -e "${BOLD}$1${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}!${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}✗${NC} $1"
+}
+
+print_info() {
+    echo -e "${BLUE}→${NC} $1"
+}
+
+#
+# init command
+#
+
+cmd_init() {
+    print_header "Initializing Agent Context System"
+    echo ""
+
+    local errors=0
+
+    # 1. Create .agents.local.md if it doesn't exist
+    if [[ -f "$TARGET_DIR/.agents.local.md" ]]; then
+        print_success ".agents.local.md already exists"
+    else
+        # Check for template
+        local template=""
+        if [[ -f "$TEMPLATE_DIR/scripts/agents-local-template.md" ]]; then
+            template="$TEMPLATE_DIR/scripts/agents-local-template.md"
+        elif [[ -f "$SCRIPT_DIR/scripts/agents-local-template.md" ]]; then
+            template="$SCRIPT_DIR/scripts/agents-local-template.md"
+        fi
+
+        if [[ -n "$template" ]]; then
+            cp "$template" "$TARGET_DIR/.agents.local.md"
+            print_success "Created .agents.local.md from template"
+        else
+            # Create minimal scratchpad
+            cat > "$TARGET_DIR/.agents.local.md" << 'SCRATCHPAD'
+# Agent Scratchpad
+
+Personal context that persists across sessions. Gitignored.
+
+## Preferences
+
+<!-- Your personal preferences, shortcuts, patterns you like -->
+
+## Session Log
+
+<!-- Agent appends here at end of each session -->
+
+## Ready to Promote
+
+<!-- Patterns that have recurred 3+ times, formatted for AGENTS.md -->
+SCRATCHPAD
+            print_success "Created .agents.local.md (minimal template)"
+        fi
+    fi
+
+    # 2. Ensure .agents.local.md is in .gitignore
+    if [[ -f "$TARGET_DIR/.gitignore" ]]; then
+        if grep -q "^\.agents\.local\.md$" "$TARGET_DIR/.gitignore" 2>/dev/null; then
+            print_success ".agents.local.md is in .gitignore"
+        else
+            echo ".agents.local.md" >> "$TARGET_DIR/.gitignore"
+            print_success "Added .agents.local.md to .gitignore"
+        fi
+    else
+        echo ".agents.local.md" > "$TARGET_DIR/.gitignore"
+        print_success "Created .gitignore with .agents.local.md"
+    fi
+
+    # 3. Create CLAUDE.md symlink for Claude Code
+    if [[ -L "$TARGET_DIR/CLAUDE.md" ]]; then
+        print_success "CLAUDE.md symlink already exists"
+    elif [[ -f "$TARGET_DIR/CLAUDE.md" ]]; then
+        print_warning "CLAUDE.md exists as a file (not symlink) - skipping"
+    elif [[ -f "$TARGET_DIR/AGENTS.md" ]]; then
+        ln -s AGENTS.md "$TARGET_DIR/CLAUDE.md"
+        print_success "Created CLAUDE.md symlink → AGENTS.md"
+    else
+        print_warning "No AGENTS.md found - skipping CLAUDE.md symlink"
+        print_info "Copy AGENTS.md to your project first, then re-run init"
+    fi
+
+    # 4. Create agent_docs/ if AGENTS.md exists but agent_docs doesn't
+    if [[ -f "$TARGET_DIR/AGENTS.md" ]] && [[ ! -d "$TARGET_DIR/agent_docs" ]]; then
+        mkdir -p "$TARGET_DIR/agent_docs"
+
+        # Create minimal docs
+        cat > "$TARGET_DIR/agent_docs/conventions.md" << 'CONVENTIONS'
+# Conventions
+
+Project conventions that don't fit in AGENTS.md's compressed format.
+
+## Code Style
+
+<!-- Detailed style guidelines -->
+
+## Naming
+
+<!-- Naming conventions -->
+
+## Patterns
+
+<!-- Common patterns used in this codebase -->
+CONVENTIONS
+
+        cat > "$TARGET_DIR/agent_docs/architecture.md" << 'ARCHITECTURE'
+# Architecture
+
+High-level architecture documentation.
+
+## Overview
+
+<!-- System overview -->
+
+## Components
+
+<!-- Major components and their responsibilities -->
+
+## Data Flow
+
+<!-- How data moves through the system -->
+ARCHITECTURE
+
+        cat > "$TARGET_DIR/agent_docs/gotchas.md" << 'GOTCHAS'
+# Gotchas
+
+Traps that have caught developers before.
+
+<!-- Format: ## Gotcha Name
+What happens, why it happens, how to avoid it. -->
+GOTCHAS
+
+        print_success "Created agent_docs/ with templates"
+    elif [[ -d "$TARGET_DIR/agent_docs" ]]; then
+        print_success "agent_docs/ already exists"
+    fi
+
+    echo ""
+    print_header "Setup complete!"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Edit AGENTS.md with your project specifics"
+    echo "  2. Fill in agent_docs/ with deeper references"
+    echo "  3. Run 'agent-context validate' to check setup"
+    echo ""
+}
+
+#
+# validate command
+#
+
+cmd_validate() {
+    print_header "Validating Agent Context System"
+    echo ""
+
+    local errors=0
+    local warnings=0
+
+    # Check AGENTS.md exists
+    if [[ -f "$TARGET_DIR/AGENTS.md" ]]; then
+        print_success "AGENTS.md exists"
+
+        # Check line count
+        local line_count
+        line_count=$(wc -l < "$TARGET_DIR/AGENTS.md")
+        if [[ $line_count -le 120 ]]; then
+            print_success "AGENTS.md is under 120 lines ($line_count lines)"
+        else
+            print_warning "AGENTS.md exceeds 120 lines ($line_count lines)"
+            print_info "Consider moving content to agent_docs/"
+            ((warnings++))
+        fi
+    else
+        print_error "AGENTS.md not found"
+        ((errors++))
+    fi
+
+    # Check .agents.local.md exists
+    if [[ -f "$TARGET_DIR/.agents.local.md" ]]; then
+        print_success ".agents.local.md exists"
+    else
+        print_error ".agents.local.md not found"
+        print_info "Run 'agent-context init' to create it"
+        ((errors++))
+    fi
+
+    # Check .agents.local.md is gitignored
+    if [[ -f "$TARGET_DIR/.gitignore" ]]; then
+        if grep -q "^\.agents\.local\.md$" "$TARGET_DIR/.gitignore" 2>/dev/null; then
+            print_success ".agents.local.md is in .gitignore"
+        else
+            print_error ".agents.local.md is NOT in .gitignore"
+            print_info "Run 'agent-context init' to fix"
+            ((errors++))
+        fi
+    else
+        print_error ".gitignore not found"
+        ((errors++))
+    fi
+
+    # Check CLAUDE.md symlink
+    if [[ -L "$TARGET_DIR/CLAUDE.md" ]]; then
+        local target
+        target=$(readlink "$TARGET_DIR/CLAUDE.md")
+        if [[ "$target" == "AGENTS.md" ]]; then
+            print_success "CLAUDE.md symlink → AGENTS.md"
+        else
+            print_warning "CLAUDE.md symlink points to '$target' (expected AGENTS.md)"
+            ((warnings++))
+        fi
+    elif [[ -f "$TARGET_DIR/CLAUDE.md" ]]; then
+        print_warning "CLAUDE.md exists as file (should be symlink)"
+        ((warnings++))
+    else
+        print_warning "CLAUDE.md symlink not found (needed for Claude Code)"
+        ((warnings++))
+    fi
+
+    # Check agent_docs/
+    if [[ -d "$TARGET_DIR/agent_docs" ]]; then
+        print_success "agent_docs/ directory exists"
+    else
+        print_warning "agent_docs/ not found (optional but recommended)"
+        ((warnings++))
+    fi
+
+    # Check for secrets in AGENTS.md
+    if [[ -f "$TARGET_DIR/AGENTS.md" ]]; then
+        local secrets_found=false
+
+        # Common secret patterns
+        if grep -qiE "(api[_-]?key|secret|password|token|credential)\s*[:=]\s*['\"]?[a-zA-Z0-9]+" "$TARGET_DIR/AGENTS.md" 2>/dev/null; then
+            secrets_found=true
+        fi
+        if grep -qE "sk-[a-zA-Z0-9]{20,}" "$TARGET_DIR/AGENTS.md" 2>/dev/null; then
+            secrets_found=true
+        fi
+        if grep -qE "ghp_[a-zA-Z0-9]{36}" "$TARGET_DIR/AGENTS.md" 2>/dev/null; then
+            secrets_found=true
+        fi
+
+        if $secrets_found; then
+            print_error "Possible secrets detected in AGENTS.md"
+            print_info "Never store credentials in agent context files"
+            ((errors++))
+        else
+            print_success "No obvious secrets in AGENTS.md"
+        fi
+    fi
+
+    echo ""
+
+    if [[ $errors -eq 0 ]] && [[ $warnings -eq 0 ]]; then
+        print_header "All checks passed!"
+    elif [[ $errors -eq 0 ]]; then
+        print_header "Validation passed with $warnings warning(s)"
+    else
+        print_header "Validation failed: $errors error(s), $warnings warning(s)"
+        return 1
+    fi
+}
+
+#
+# promote command
+#
+
+cmd_promote() {
+    print_header "Finding Patterns to Promote"
+    echo ""
+
+    if [[ ! -f "$TARGET_DIR/.agents.local.md" ]]; then
+        print_error ".agents.local.md not found"
+        print_info "Run 'agent-context init' first"
+        return 1
+    fi
+
+    if [[ ! -f "$TARGET_DIR/AGENTS.md" ]]; then
+        print_error "AGENTS.md not found"
+        return 1
+    fi
+
+    # 1. Show items already flagged in Ready to Promote section
+    echo -e "${BOLD}Ready to Promote (flagged by agent):${NC}"
+    echo ""
+
+    local in_promote=false
+    local found_promote=false
+    local in_comment=false
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Track HTML comments (multi-line)
+        case "$line" in
+            "<!--"*"-->"*) continue ;;  # Single-line comment, skip
+            "<!--"*) in_comment=true; continue ;;
+            *"-->") in_comment=false; continue ;;
+        esac
+        if $in_comment; then continue; fi
+
+        # Find the Ready to Promote section
+        if [[ "$line" =~ ^##[[:space:]]+Ready[[:space:]]+to[[:space:]]+Promote ]]; then
+            in_promote=true
+            continue
+        fi
+
+        # Exit on next section
+        if $in_promote && [[ "$line" =~ ^## ]]; then
+            break
+        fi
+
+        # Print non-empty lines in the section
+        if $in_promote && [[ -n "${line// /}" ]]; then
+            echo "  $line"
+            found_promote=true
+        fi
+    done < "$TARGET_DIR/.agents.local.md"
+
+    if ! $found_promote; then
+        echo "  (none flagged yet)"
+    fi
+
+    echo ""
+
+    # 2. Find scratchpad items not in AGENTS.md
+    echo -e "${BOLD}Scratchpad patterns not in AGENTS.md:${NC}"
+    echo ""
+
+    local found_new=false
+    local in_session=false
+    in_comment=false
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Track HTML comments
+        case "$line" in
+            "<!--"*"-->"*) continue ;;
+            "<!--"*) in_comment=true; continue ;;
+            *"-->") in_comment=false; continue ;;
+        esac
+        if $in_comment; then continue; fi
+
+        # Skip headers and empty lines
+        [[ "$line" =~ ^# ]] && continue
+        [[ -z "${line// /}" ]] && continue
+
+        # Look for pattern-like lines (contains |)
+        if [[ "$line" == *"|"* ]]; then
+            # Extract the pattern part (before first |)
+            local pattern
+            pattern=$(echo "$line" | cut -d'|' -f1 | xargs)
+
+            # Check if it's already in AGENTS.md
+            if ! grep -qF "$pattern" "$TARGET_DIR/AGENTS.md" 2>/dev/null; then
+                echo "  $line"
+                found_new=true
+            fi
+        fi
+    done < "$TARGET_DIR/.agents.local.md"
+
+    if ! $found_new; then
+        echo "  (all current patterns are in AGENTS.md)"
+    fi
+
+    echo ""
+
+    # 3. Count sessions for frequency analysis
+    local session_count
+    session_count=$(grep -c "^### Session" "$TARGET_DIR/.agents.local.md" 2>/dev/null) || session_count=0
+
+    echo -e "${BOLD}Stats:${NC}"
+    echo "  Sessions logged: $session_count"
+    echo "  Scratchpad lines: $(wc -l < "$TARGET_DIR/.agents.local.md")"
+    echo "  AGENTS.md lines: $(wc -l < "$TARGET_DIR/AGENTS.md")"
+    echo ""
+
+    if [[ $session_count -lt 3 ]]; then
+        print_info "Log a few more sessions before promoting patterns"
+    fi
+}
+
+#
+# help command
+#
+
+cmd_help() {
+    cat << 'HELP'
+agent-context - Unified CLI for the Agent Context System
+
+USAGE:
+    agent-context <command>
+
+COMMANDS:
+    init        Set up context system in current project
+                Creates .agents.local.md, ensures gitignore, creates CLAUDE.md symlink
+
+    validate    Check that setup is correct
+                Verifies files exist, line counts, no secrets
+
+    promote     Find patterns to move from scratchpad to AGENTS.md
+                Shows flagged items and suggests candidates
+
+    help        Show this help message
+
+EXAMPLES:
+    # Initialize in a new project
+    cd my-project
+    agent-context init
+
+    # Check everything is set up correctly
+    agent-context validate
+
+    # See what patterns are ready to promote
+    agent-context promote
+
+INSTALLATION:
+    # Via ClawHub (OpenClaw)
+    clawhub install agent-context
+
+    # Via GitHub template
+    gh repo create my-project --template AndreaGriffiths11/agent-context-system
+
+    # Manual
+    chmod +x agent-context
+    ./agent-context init
+
+For more information: https://github.com/AndreaGriffiths11/agent-context-system
+HELP
+}
+
+#
+# Main
+#
+
+main() {
+    local cmd="${1:-help}"
+
+    case "$cmd" in
+        init)
+            cmd_init
+            ;;
+        validate)
+            cmd_validate
+            ;;
+        promote)
+            cmd_promote
+            ;;
+        help|--help|-h)
+            cmd_help
+            ;;
+        *)
+            print_error "Unknown command: $cmd"
+            echo ""
+            cmd_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
