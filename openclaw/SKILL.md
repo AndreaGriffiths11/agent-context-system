@@ -1,18 +1,8 @@
 ---
 name: agent-context
 description: Bootstrap persistent project context for AI coding agents.
-version: 1.0.0
-metadata:
-  openclaw:
-    requires:
-      bins:
-        - bash
-        - git
-    emoji: "🧠"
-    homepage: https://github.com/AndreaGriffiths11/agent-context-system
-    os:
-      - macos
-      - linux
+version: 1.1.0
+metadata: {"openclaw": {"emoji": "🧠", "homepage": "https://github.com/AndreaGriffiths11/agent-context-system", "os": ["darwin", "linux"], "requires": {"bins": ["bash", "git"]}, "install": [{"id": "github", "kind": "download", "url": "https://github.com/AndreaGriffiths11/agent-context-system/archive/refs/heads/main.tar.gz", "archive": "tar.gz", "stripComponents": 1, "bins": ["agent-context"], "label": "Download from GitHub"}]}}
 ---
 
 # Agent Context System
@@ -27,12 +17,14 @@ Agents start from zero every session. This skill fixes that.
 ## Quick Start
 
 ```bash
-# Install from ClawHub
+# Install from ClawHub (downloads CLI from GitHub)
 clawhub install agent-context
 
 # Initialize in your project
 agent-context init
 ```
+
+The `agent-context` CLI and supporting files (`AGENTS.md` template, `scripts/`, `agent_docs/`) are downloaded from the [GitHub repo](https://github.com/AndreaGriffiths11/agent-context-system).
 
 ## Commands
 
