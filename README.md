@@ -66,6 +66,7 @@ cd my-project
 agent-context init      # Set up context system in current project
 agent-context validate  # Check setup is correct
 agent-context promote   # Find patterns to move from scratchpad to AGENTS.md
+agent-context promote --autopromote  # Auto-append patterns recurring 3+ times
 ```
 
 ## How knowledge moves
@@ -75,7 +76,7 @@ agent-context promote   # Find patterns to move from scratchpad to AGENTS.md
 1. **Write**: Agent logs learnings to `.agents.local.md` at session end
 2. **Compress**: Scratchpad compresses when it hits 300 lines
 3. **Flag**: Patterns recurring 3+ times get flagged "Ready to Promote"
-4. **Promote**: You decide what moves to `AGENTS.md`
+4. **Promote**: Run `agent-context promote` to review, or `--autopromote` to auto-append to `AGENTS.md`
 
 ---
 

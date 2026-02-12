@@ -71,7 +71,7 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Trust
 4. Only touch what the task requires.
 5. Run tests after every change. Run lint before committing.
 6. Summarize every file modified and what changed.
-7. At session end, append to `.agents.local.md` Session Log: what changed, what worked, what didn't, decisions made, patterns learned. If the user ends the session without asking, prompt them to let you log it.
+7. At session end, append to `.agents.local.md` Session Log: what changed, what worked, what didn't, decisions made, patterns learned. If the user ends the session without asking, prompt them to let you log it. Run `agent-context promote` to review candidates, or `agent-context promote --autopromote` to auto-append patterns recurring 3+ times.
 
 ## Deep References (Read Only When Needed)
 
@@ -90,6 +90,7 @@ If the scratchpad exceeds 300 lines, compress: deduplicate and merge. If a patte
 ### Promotion Workflow
 - During compression (300+ lines), flag patterns that recurred 3+ sessions in `.agents.local.md` → "Ready to Promote"
 - Use pipe-delimited format: `pattern | context` → target section (Patterns, Gotchas, or Boundaries)
-- Human decides when to move flagged items into this file
+- Run `agent-context promote --autopromote` to automatically append flagged patterns to AGENTS.md
+- Or review manually with `agent-context promote` and decide what moves to this file
 - After promoting: remove the item from Ready to Promote in `.agents.local.md`
 - If an item is already captured in AGENTS.md, clear it from Ready to Promote — don't duplicate
