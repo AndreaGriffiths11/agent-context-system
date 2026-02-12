@@ -1,8 +1,8 @@
 ---
 name: agent-context
 description: Bootstrap persistent project context for AI coding agents.
-version: 1.1.0
-metadata: {"openclaw": {"emoji": "🧠", "homepage": "https://github.com/AndreaGriffiths11/agent-context-system", "os": ["darwin", "linux"], "requires": {"bins": ["bash", "git"]}, "install": [{"id": "github", "kind": "download", "url": "https://github.com/AndreaGriffiths11/agent-context-system/archive/refs/tags/v1.1.0.tar.gz", "archive": "tar.gz", "stripComponents": 1, "bins": ["agent-context"], "label": "Download v1.1.0 from GitHub"}]}}
+version: 1.2.0
+metadata: {"openclaw": {"emoji": "🧠", "homepage": "https://github.com/AndreaGriffiths11/agent-context-system", "os": ["darwin", "linux"], "requires": {"bins": ["bash", "git"]}, "install": [{"id": "github", "kind": "download", "url": "https://github.com/AndreaGriffiths11/agent-context-system/archive/refs/tags/v1.2.0.tar.gz", "archive": "tar.gz", "stripComponents": 1, "bins": ["agent-context"], "label": "Download v1.2.0 from GitHub"}]}}
 ---
 
 # Agent Context System
