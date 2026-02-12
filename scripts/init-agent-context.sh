@@ -72,7 +72,7 @@ setup_claude() {
                 echo ""
                 echo "## Agent Context"
                 echo "Read \`AGENTS.md\` and \`.agents.local.md\` (if it exists) before starting any task."
-                echo "Follow the self-updating protocol defined in \`AGENTS.md\`."
+                echo "At session end, append to \`.agents.local.md\` Session Log: what changed, what worked, what didn't, decisions made, patterns learned."
             } >> "$target"
             echo "  [ok] Added agent context section to existing CLAUDE.md."
         else
@@ -99,7 +99,7 @@ setup_cursor() {
         echo "  [ok] .cursorrules already references AGENTS.md."
         return
     fi
-    local directive="Before starting any task, read AGENTS.md and .agents.local.md in the repo root. Follow the self-updating protocol defined in AGENTS.md."
+    local directive="Before starting any task, read AGENTS.md and .agents.local.md in the repo root. At session end, append to .agents.local.md Session Log: what changed, what worked, what didn't, decisions made, patterns learned."
     if [ -f "$target" ]; then
         echo "" >> "$target"
         echo "$directive" >> "$target"
@@ -116,7 +116,7 @@ setup_windsurf() {
         echo "  [ok] .windsurfrules already references AGENTS.md."
         return
     fi
-    local directive="Before starting any task, read AGENTS.md and .agents.local.md in the repo root. Follow the self-updating protocol defined in AGENTS.md."
+    local directive="Before starting any task, read AGENTS.md and .agents.local.md in the repo root. At session end, append to .agents.local.md Session Log: what changed, what worked, what didn't, decisions made, patterns learned."
     if [ -f "$target" ]; then
         echo "" >> "$target"
         echo "$directive" >> "$target"
@@ -140,7 +140,7 @@ setup_copilot() {
             echo ""
             echo "## Agent Context"
             echo "Read \`AGENTS.md\` and \`.agents.local.md\` (if it exists) before starting any task."
-            echo "Follow the self-updating protocol defined in \`AGENTS.md\`."
+            echo "At session end, append to \`.agents.local.md\` Session Log: what changed, what worked, what didn't, decisions made, patterns learned."
         } >> "$target"
         echo "  [ok] Added agent context to existing copilot-instructions.md."
     else
@@ -149,7 +149,7 @@ setup_copilot() {
 
 ## Agent Context
 Read `AGENTS.md` and `.agents.local.md` (if it exists) before starting any task.
-Follow the self-updating protocol defined in `AGENTS.md`.
+At session end, append to `.agents.local.md` Session Log: what changed, what worked, what didn't, decisions made, patterns learned.
 EOF
         echo "  [ok] Created .github/copilot-instructions.md."
     fi

@@ -200,6 +200,23 @@ That playbook is AGENTS.md.
 
 Shell scripts in `scripts/` are linted on every push and pull request via <a href="https://www.shellcheck.net/">ShellCheck</a>. The workflow lives in `.github/workflows/shellcheck.yml`.
 
+## Session logging: the gap you need to know about
+
+The system tells agents to "update the scratchpad at session end." But most agents don't have session-end hooks. Copilot Chat, Cursor, and Windsurf sessions just end when you stop talking — no signal fires, no cleanup runs.
+
+Claude Code is the exception: it has auto memory and persistent session context that handle this automatically.
+
+For every other agent, session logging only happens if:
+1. The agent sees the instruction early and proactively logs before the conversation ends, or
+2. **You prompt the agent.** Say "log this session" or "update the scratchpad" before closing.
+
+The template mitigates this by:
+- Putting session-logging as **Rule 7** in `AGENTS.md` (not buried in a Local Context section)
+- Making every agent config directive (`.cursorrules`, `.windsurfrules`, `copilot-instructions.md`) explicitly say "at session end, append to `.agents.local.md`" instead of "follow the self-updating protocol"
+- Adding a nudge in Rule 7: "If the user ends the session without asking, prompt them to let you log it"
+
+But there's no guarantee. If a long debugging session ends abruptly, the learnings may be lost. Get in the habit of prompting "log this session" when meaningful work was done.
+
 ## After setup
 
 1. **Edit `AGENTS.md`.** Fill in your project name, stack, commands. Replace the placeholder patterns and gotchas with real ones from your codebase. This is the highest-leverage edit you'll make.

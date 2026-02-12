@@ -45,7 +45,7 @@ Then edit `AGENTS.md` with your project specifics: name, stack, commands, actual
 
 The agent reads both files at session start. `AGENTS.md` gives it compressed project knowledge. `.agents.local.md` gives it accumulated learnings from past sessions. The agent now has context that persists across sessions.
 
-At session end, the agent appends to the scratchpad's Session Log: what changed, what worked, what didn't, decisions made, patterns learned.
+At session end, the agent appends to the scratchpad's Session Log: what changed, what worked, what didn't, decisions made, patterns learned. Most agents (Copilot Chat, Cursor, Windsurf) don't have session-end hooks, so this depends on Rule 7 in `AGENTS.md` being seen and acted on, or the user saying "log this session." Claude Code handles this automatically via auto memory.
 
 ### 3. Over Time
 

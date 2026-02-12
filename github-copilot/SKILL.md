@@ -69,10 +69,12 @@ When a user asks about setting up agent context:
 
 1. Read `AGENTS.md` and `.agents.local.md` (if it exists) before starting any task
 2. Follow project conventions and boundaries defined in compressed format
-3. At session end, append to `.agents.local.md` Session Log:
+3. **At session end, append to `.agents.local.md` Session Log.** This is the most commonly missed step. If the user appears to be ending the session without asking you to log, proactively offer to update the scratchpad.
    - Done: (what changed)
    - Worked: (reuse this)
    - Didn't work: (avoid this)
    - Decided: (choices and reasoning)
    - Learned: (new patterns or gotchas)
 4. When scratchpad exceeds 300 lines, compress and flag recurring patterns (3+ sessions) for promotion
+
+> **Known gap:** Most agent tools (Copilot Chat, Cursor, Windsurf) end sessions silently — no hook fires. Session logging depends on the agent seeing Rule 7 in AGENTS.md and acting on it, or the user prompting "log this session." Claude Code's auto memory handles this automatically.

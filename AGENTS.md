@@ -71,6 +71,7 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Trust
 4. Only touch what the task requires.
 5. Run tests after every change. Run lint before committing.
 6. Summarize every file modified and what changed.
+7. At session end, append to `.agents.local.md` Session Log: what changed, what worked, what didn't, decisions made, patterns learned. If the user ends the session without asking, prompt them to let you log it.
 
 ## Deep References (Read Only When Needed)
 
@@ -82,8 +83,6 @@ For tasks requiring deeper context than the compressed knowledge above:
 
 ## Local Context
 
-If `.agents.local.md` exists in the repo root, read it before starting work. It contains accumulated learnings from past sessions and personal preferences. It is gitignored and never committed. Subagents: you get this file (AGENTS.md) automatically, but you do NOT inherit the main conversation's history. Reading `.agents.local.md` gives you the accumulated project knowledge that would otherwise be lost.
+Read `.agents.local.md` at session start. Update it at session end (Rule 7). Subagents: explicitly read `.agents.local.md` — you don't inherit conversation history.
 
-Claude Code users: if auto memory is enabled (`~/.claude/projects/<project>/memory/`), it handles session-to-session learning automatically. The scratchpad is optional. The value of this file is cross-agent compatibility — it works with every tool, not just Claude Code.
-
-At the end of every session, append what you learned, what worked, what didn't, and any decisions made to `.agents.local.md`. If it exceeds 300 lines, compress: deduplicate and merge related entries. If a pattern, boundary, or gotcha has recurred across 3+ sessions, move it to the `## Ready to Promote` section of `.agents.local.md` in pipe-delimited format. The human decides when to move flagged items into this file.
+If the scratchpad exceeds 300 lines, compress: deduplicate and merge. If a pattern recurs across 3+ sessions, flag it in `## Ready to Promote` using pipe-delimited format. The human promotes to this file.
