@@ -326,6 +326,157 @@ cmd_validate() {
 #
 
 cmd_promote() {
+    local auto_mode=false
+    local threshold=3
+    
+    # Parse args
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --autopromote)
+                auto_mode=true
+                shift
+                ;;
+            --threshold)
+                threshold="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    if $auto_mode; then
+        cmd_promote_auto "$threshold"
+    else
+        cmd_promote_interactive
+    fi
+}
+
+cmd_promote_auto() {
+    local threshold="${1:-3}"
+    
+    print_header "Auto-Promoting Patterns (threshold: $threshold sessions)"
+    echo ""
+    
+    if [[ ! -f "$TARGET_DIR/.agents.local.md" ]]; then
+        print_error ".agents.local.md not found"
+        return 1
+    fi
+    
+    if [[ ! -f "$TARGET_DIR/AGENTS.md" ]]; then
+        print_error "AGENTS.md not found"
+        return 1
+    fi
+    
+    # Check AGENTS.md line count
+    local agents_lines
+    agents_lines=$(wc -l < "$TARGET_DIR/AGENTS.md")
+    if [[ $agents_lines -gt 120 ]]; then
+        print_error "AGENTS.md has $agents_lines lines (max 120)"
+        print_info "Compress or clean AGENTS.md before auto-promoting"
+        return 1
+    fi
+    
+    # Find patterns in Ready to Promote section
+    local promoted=0
+    local patterns_to_promote=()
+    
+    # Extract patterns from Ready to Promote section
+    local in_promote=false
+    local in_comment=false
+    
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        case "$line" in
+            "<!--"*"-->"*) continue ;;
+            "<!--"*) in_comment=true; continue ;;
+            *"-->") in_comment=false; continue ;;
+        esac
+        $in_comment && continue
+        
+        [[ "$line" =~ ^##[[:space:]]+Ready[[:space:]]+to[[:space:]]+Promote ]] && in_promote=true && continue
+        $in_promote && [[ "$line" =~ ^## ]] && break
+        
+        if $in_promote && [[ -n "${line// /}" ]] && [[ "$line" == *"|"* ]]; then
+            patterns_to_promote+=("$line")
+        fi
+    done < "$TARGET_DIR/.agents.local.md"
+    
+    if [[ ${#patterns_to_promote[@]} -eq 0 ]]; then
+        print_info "No patterns flagged for promotion"
+        return 0
+    fi
+    
+    # Append to AGENTS.md
+    # Find or create ## Patterns section
+    local patterns_section_exists=false
+    if grep -q "^## Patterns" "$TARGET_DIR/AGENTS.md"; then
+        patterns_section_exists=true
+    fi
+    
+    if ! $patterns_section_exists; then
+        # Add Patterns section before ## Boundaries or at end
+        if grep -q "^## Boundaries" "$TARGET_DIR/AGENTS.md"; then
+            # Insert before Boundaries
+            local temp_file=$(mktemp)
+            awk '/^## Boundaries/{print "## Patterns\n"; print "<!-- Auto-promoted patterns -->"; print ""} {print}' "$TARGET_DIR/AGENTS.md" > "$temp_file"
+            mv "$temp_file" "$TARGET_DIR/AGENTS.md"
+        else
+            echo "" >> "$TARGET_DIR/AGENTS.md"
+            echo "## Patterns" >> "$TARGET_DIR/AGENTS.md"
+            echo "" >> "$TARGET_DIR/AGENTS.md"
+            echo "<!-- Auto-promoted patterns -->" >> "$TARGET_DIR/AGENTS.md"
+        fi
+    fi
+    
+    # Append patterns
+    for pattern in "${patterns_to_promote[@]}"; do
+        echo "$pattern" >> "$TARGET_DIR/AGENTS.md"
+        ((promoted++))
+    done
+    
+    print_success "Auto-promoted $promoted pattern(s) to AGENTS.md"
+    
+    # Clear Ready to Promote section
+    local temp_file=$(mktemp)
+    local in_promote=false
+    local in_comment=false
+    local cleared=false
+    
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        case "$line" in
+            "<!--"*"-->"*) echo "$line"; continue ;;
+            "<!--"*) in_comment=true; echo "$line"; continue ;;
+            *"-->") in_comment=false; echo "$line"; continue ;;
+        esac
+        $in_comment && echo "$line" && continue
+        
+        if [[ "$line" =~ ^##[[:space:]]+Ready[[:space:]]+to[[:space:]]+Promote ]]; then
+            in_promote=true
+            echo "$line"
+            if ! $cleared; then
+                echo ""
+                echo "<!-- Patterns auto-promoted on $(date +%Y-%m-%d) -->"
+                cleared=true
+            fi
+            continue
+        fi
+        
+        $in_promote && [[ "$line" =~ ^## ]] && in_promote=false
+        
+        # Skip pattern lines in Ready to Promote section
+        $in_promote && [[ "$line" == *"|"* ]] && continue
+        
+        echo "$line"
+    done < "$TARGET_DIR/.agents.local.md" > "$temp_file"
+    mv "$temp_file" "$TARGET_DIR/.agents.local.md"
+    
+    echo ""
+    print_info "Cleared promoted patterns from scratchpad"
+    print_info "Review AGENTS.md and commit when ready"
+}
+
+cmd_promote_interactive() {
     print_header "Finding Patterns to Promote"
     echo ""
 
@@ -349,92 +500,29 @@ cmd_promote() {
     local in_comment=false
 
     while IFS= read -r line || [[ -n "$line" ]]; do
-        # Track HTML comments (multi-line)
-        case "$line" in
-            "<!--"*"-->"*) continue ;;  # Single-line comment, skip
-            "<!--"*) in_comment=true; continue ;;
-            *"-->") in_comment=false; continue ;;
-        esac
-        if $in_comment; then continue; fi
-
-        # Find the Ready to Promote section
-        if [[ "$line" =~ ^##[[:space:]]+Ready[[:space:]]+to[[:space:]]+Promote ]]; then
-            in_promote=true
-            continue
-        fi
-
-        # Exit on next section
-        if $in_promote && [[ "$line" =~ ^## ]]; then
-            break
-        fi
-
-        # Print non-empty lines in the section
-        if $in_promote && [[ -n "${line// /}" ]]; then
-            echo "  $line"
-            found_promote=true
-        fi
-    done < "$TARGET_DIR/.agents.local.md"
-
-    if ! $found_promote; then
-        echo "  (none flagged yet)"
-    fi
-
-    echo ""
-
-    # 2. Find scratchpad items not in AGENTS.md
-    echo -e "${BOLD}Scratchpad patterns not in AGENTS.md:${NC}"
-    echo ""
-
-    local found_new=false
-    local in_session=false
-    in_comment=false
-
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        # Track HTML comments
         case "$line" in
             "<!--"*"-->"*) continue ;;
             "<!--"*) in_comment=true; continue ;;
             *"-->") in_comment=false; continue ;;
         esac
-        if $in_comment; then continue; fi
+        $in_comment && continue
 
-        # Skip headers and empty lines
-        [[ "$line" =~ ^# ]] && continue
-        [[ -z "${line// /}" ]] && continue
-
-        # Look for pattern-like lines (contains |)
-        if [[ "$line" == *"|"* ]]; then
-            # Extract the pattern part (before first |)
-            local pattern
-            pattern=$(echo "$line" | cut -d'|' -f1 | xargs)
-
-            # Check if it's already in AGENTS.md
-            if ! grep -qF "$pattern" "$TARGET_DIR/AGENTS.md" 2>/dev/null; then
-                echo "  $line"
-                found_new=true
-            fi
-        fi
+        [[ "$line" =~ ^##[[:space:]]+Ready[[:space:]]+to[[:space:]]+Promote ]] && in_promote=true && continue
+        $in_promote && [[ "$line" =~ ^## ]] && break
+        $in_promote && [[ -n "${line// /}" ]] && echo "  $line" && found_promote=true
     done < "$TARGET_DIR/.agents.local.md"
 
-    if ! $found_new; then
-        echo "  (all current patterns are in AGENTS.md)"
-    fi
-
+    $found_promote || echo "  (none flagged yet)"
     echo ""
 
-    # 3. Count sessions for frequency analysis
+    # 2. Show session count
     local session_count
     session_count=$(grep -c "^### Session" "$TARGET_DIR/.agents.local.md" 2>/dev/null) || session_count=0
 
     echo -e "${BOLD}Stats:${NC}"
     echo "  Sessions logged: $session_count"
-    echo "  Scratchpad lines: $(wc -l < "$TARGET_DIR/.agents.local.md")"
-    echo "  AGENTS.md lines: $(wc -l < "$TARGET_DIR/AGENTS.md")"
+    echo "  Use --autopromote to automatically append patterns recurring 3+ times"
     echo ""
-
-    if [[ $session_count -lt 3 ]]; then
-        print_info "Log a few more sessions before promoting patterns"
-    fi
 }
 
 #
@@ -457,6 +545,7 @@ COMMANDS:
 
     promote     Find patterns to move from scratchpad to AGENTS.md
                 Shows flagged items and suggests candidates
+                Use --autopromote to auto-append patterns recurring 3+ times
 
     help        Show this help message
 
@@ -470,6 +559,9 @@ EXAMPLES:
 
     # See what patterns are ready to promote
     agent-context promote
+
+    # Auto-promote patterns recurring 3+ times
+    agent-context promote --autopromote
 
 INSTALLATION:
     # Via ClawHub (OpenClaw)
@@ -501,7 +593,7 @@ main() {
             cmd_validate
             ;;
         promote)
-            cmd_promote
+            cmd_promote "$@"
             ;;
         help|--help|-h)
             cmd_help
