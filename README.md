@@ -1,23 +1,24 @@
 # Agent Context System
 
-Coding agents are good at using context. They are bad at keeping it consistent.
+Coding agents are good at using context. They are terrible at keeping it consistent.
 
-Some tools now offer persistent memory, like GitHub Copilot Memory. That helps, when it is enabled, supported in your surface, and still fresh.
+Tools like GitHub Copilot Memory are doing great work here. Copilot remembers your preferences, your patterns, your stack. That's a huge step forward for individual developer experience. But there's a layer that built-in memory doesn't cover yet: shared, reviewable, version-controlled project context that lives in your repo and works across every agent your team uses.
 
-But teams still hit the same failures:
-- The "rules of the repo" are scattered across chat threads and tribal knowledge
+Teams still hit these walls:
+
+- The "rules of the repo" live in chat threads and tribal knowledge
 - A new agent or subagent starts without the constraints that matter
-- The agent learns something once, then you cannot review it like code
+- The agent learns something once, then you can't review it like code
 - Context drifts because nobody promotes stable decisions into a shared source of truth
 
-This project is a small, boring fix. It makes your project context explicit, reviewable, and portable across agents.
+This project doesn't replace built-in memory. It complements it. Built-in memory handles what the tool learns about *you*. This handles what every agent needs to know about *your project*. It makes that context explicit, reviewable, and portable.
 
 ## What this is
 
 Two markdown files. One committed, one gitignored. The agent reads both at the start of every session and updates the local one at the end.
 
-- `AGENTS.md` — your project's source of truth. Committed and shared. Always in the agent's prompt.
-- `.agents.local.md` — your personal scratchpad. Gitignored. Grows over time as the agent logs what it learns each session.
+- `AGENTS.md` is your project's source of truth. Committed and shared. Always in the agent's prompt.
+- `.agents.local.md` is your personal scratchpad. Gitignored. It grows over time as the agent logs what it learns each session.
 
 That's it. No plugins, no infrastructure, no background processes. The convention lives inside the files themselves, and the agent follows it.
 
@@ -31,8 +32,8 @@ your-repo/
 │   ├── architecture.md
 │   └── gotchas.md
 ├── docs/                        # Diagrams and visual references.
-│   ├── subagent-context.svg
-│   └── subagent-context.excalidraw
+│   ├── knowledge-flow.png
+│   └── subagent-context.png
 ├── github-copilot/              # Copilot-specific skill definition.
 │   └── SKILL.md
 ├── scripts/
@@ -57,7 +58,7 @@ npx skills add AndreaGriffiths11/agent-context-system
 
 That drops a `SKILL.md` into your `.github/skills/` directory. Copilot picks it up automatically when the skill description matches your prompt context. In VS Code, make sure `chat.useAgentSkills` is enabled.
 
-You can also copy `github-copilot/SKILL.md` manually into `.github/skills/agent-context-system/SKILL.md` if you prefer not to use the CLI.
+You can also copy `github-copilot/SKILL.md` manually into `.github/skills/agent-context-system/SKILL.md` if you prefer to skip the CLI.
 
 After installing the skill, run the init script to create your local scratchpad:
 
@@ -68,13 +69,13 @@ bash .agents/skills/agent-context-system/scripts/init-agent-context.sh
 <details>
 <summary><strong>What I learned building this</strong></summary>
 
-I'm going to walk you through the research because understanding the _why_ matters more than copying the files. These are fundamentals. If you understand them, you can adapt the template to your own setup instead of treating it like a black box.
+I'm walking you through the research because understanding the *why* matters more than copying the files. These are fundamentals. If you understand them, you can adapt the template to your own setup instead of treating it like a black box.
 
 ### Agents have an instruction budget and you're probably blowing it
 
-This one surprised me. HumanLayer found that frontier LLMs reliably follow about 150-200 instructions. Sounds generous until you realize Claude Code's system prompt already uses about 50 of those. HumanLayer's own CLAUDE.md is under 60 lines.
+This one surprised me. HumanLayer found that frontier LLMs reliably follow about 150 to 200 instructions. Sounds generous until you realize Claude Code's system prompt already eats about 50 of those. HumanLayer's own CLAUDE.md is under 60 lines.
 
-It gets worse. Claude Code wraps your CLAUDE.md with a system message that says the content "may or may not be relevant." So anything in your root file that isn't universally applicable to every single task risks getting quietly deprioritized.
+It gets worse. Claude Code wraps your CLAUDE.md with a system message that says the content "may or may not be relevant." So anything in your root file that isn't universally applicable to every task risks getting quietly deprioritized.
 
 That's why `AGENTS.md` in this template stays under 120 lines. I had to be ruthless about what goes in and what gets pushed to separate files.
 
@@ -87,21 +88,23 @@ This was the finding that shaped the whole design. Vercel ran evals testing how 
 - Skills with explicit instructions to use them: 79%
 - Compressed docs embedded directly in the root file: 100%
 
-The agents had access to the documentation. They just didn't use it in over half the test cases. When the docs were embedded directly in the root file, there was no decision to make. The agent got the knowledge on every turn automatically.
+The agents had access to the documentation. They didn't use it in over half the test cases. When the docs were embedded directly in the root file, there was no decision to make. The agent got the knowledge on every turn automatically.
 
-I used to think the answer was writing better docs and putting them in the right place. Turns out the answer is putting the critical stuff where the agent literally cannot miss it. That's why AGENTS.md has an inline "Project Knowledge" section with compressed patterns, boundaries, and gotchas right in the file.
+I used to think the answer was writing better docs and putting them in the right place. The actual answer is putting the critical stuff where the agent literally cannot miss it. That's why AGENTS.md has an inline "Project Knowledge" section with compressed patterns, boundaries, and gotchas right in the file.
 
 ### The files that actually work are specific
 
 GitHub analyzed over 2,500 agents.md files across public repos. The ones that help are specialists. They put executable commands early. They use code examples instead of paragraphs of explanation. They set explicit boundaries about what not to touch.
 
-"You are a helpful coding assistant" does nothing. "TypeScript, Next.js 15, pnpm, named exports only" does everything. I already knew this from teaching developers — specific beats general every time — but it was good to see the data backing it up at scale.
+"You are a helpful coding assistant" does nothing. "TypeScript, Next.js 15, pnpm, named exports only" does everything.
+
+I already knew this from teaching developers. Specific beats general every time. It was good to see the data backing it up at scale.
 
 ### Context isn't static. It has a lifecycle.
 
-LangChain frames agent context as four operations: Write, Select, Compress, Isolate. This clicked for me because it explains why just having a good AGENTS.md isn't enough. You also need a place for knowledge to accumulate and a way for it to flow back into the root file over time.
+LangChain frames agent context as four operations: Write, Select, Compress, Isolate. This clicked for me because it explains why having a good AGENTS.md alone isn't enough. You also need a place for knowledge to accumulate and a way for it to flow back into the root file over time.
 
-In this template: the agent writes to the scratchpad at session end. It selects by reading both files at session start. The scratchpad compresses when it hits 300 lines. And project context stays isolated from personal context because one is committed and the other is gitignored.
+In this template, the agent writes to the scratchpad at session end. It selects by reading both files at session start. The scratchpad compresses when it hits 300 lines. And project context stays isolated from personal context because one is committed and the other is gitignored.
 
 ### Deep docs should load on demand
 
@@ -109,21 +112,20 @@ Anthropic's Agent Skills architecture loads context in tiers: metadata first, fu
 
 ### One file works across every tool
 
-AGENTS.md is the cross-platform standard now. Cursor, Copilot, Codex, Windsurf, Factory all recognize it. Claude Code still only reads CLAUDE.md — the feature request to add AGENTS.md support is open but hasn't shipped as of February 2026. The init script creates a symlink so you maintain one file.
+AGENTS.md is the cross-platform standard now. Cursor, Copilot, Codex, Windsurf, Factory all recognize it. Claude Code still only reads CLAUDE.md. The feature request to add AGENTS.md support is open but hasn't shipped as of February 2026. The init script creates a symlink so you maintain one file.
 
 </details>
 
 
 ## How knowledge moves between the files
 
-This is the part that ties it all together. Knowledge doesn't just sit in one place. It flows.
+This is the part that ties it all together. Knowledge doesn't sit in one place. It flows.
+
+<p align="center">
+  <img src="docs/knowledge-flow.png" alt="How knowledge flows from session notes to AGENTS.md" />
+</p>
 
 Learnings start as session notes in `.agents.local.md`. The agent writes them at the end of each session. During compression, if a pattern has shown up across 3+ sessions, the agent flags it in the scratchpad's "Ready to Promote" section using the same pipe-delimited format that AGENTS.md expects. Then you decide when to move it into AGENTS.md.
-
-```
-Session notes → .agents.local.md → agent flags stable patterns → you promote to AGENTS.md
-                    (personal)                                        (shared)
-```
 
 The scratchpad is where things are still experimental. AGENTS.md is where proven knowledge lives. The agent flags candidates. You make the call.
 
@@ -174,19 +176,23 @@ The init script asks which tools you use and wires up the right config:
 
 Claude Code still reads CLAUDE.md, not AGENTS.md. The feature request is open but as of February 2026 it hasn't shipped. The init script creates a symlink so you maintain one file.
 
-Claude Code also shipped auto memory in late 2025. It creates a `~/.claude/projects/<project>/memory/` directory where Claude writes its own notes as it works and loads them at the start of each session. That's basically our `.agents.local.md` concept, built into the tool.
+Claude Code also shipped auto memory in late 2025. It creates a `~/.claude/projects/<project>/memory/` directory where Claude writes its own notes as it works and loads them at the start of each session. That's a solid implementation of session-to-session learning, and it's similar to what `.agents.local.md` does in this template.
 
-If you use Claude Code exclusively, auto memory handles session-to-session learning and the scratchpad is optional. The template's value for you is the AGENTS.md file itself: the compressed project knowledge, instruction budget discipline, and the promotion pathway that gives you a structured way to take what auto memory learns and move the stable parts into your root file where they become passive context.
+If you use Claude Code exclusively, auto memory handles the personal learning side and the scratchpad becomes optional. The template's value for you is the AGENTS.md file itself: the compressed project knowledge, instruction budget discipline, and the promotion pathway. That gives you a structured way to take what auto memory learns and move the stable parts into your root file where they become passive context for every tool, not just Claude Code.
 
-If your team uses multiple agents (which is increasingly common — GitHub just shipped Agent HQ with Copilot, Claude, and Codex side by side), the scratchpad matters because auto memory only works in Claude Code. The scratchpad works everywhere.
+If your team uses multiple agents (which is increasingly common, GitHub shipped Agent HQ with Copilot, Claude, and Codex side by side), the scratchpad fills a gap because each tool's built-in memory is siloed to that tool. The scratchpad works everywhere.
 
 ### When one agent becomes five
 
-Claude Code now ships subagents. You can spawn parallel agents that explore your codebase, review code, write tests, and debug — all at the same time, each in its own context window. Copilot CLI just shipped `/fleet` in experimental mode (February 5, 2026), which dispatches parallel subagents with a sqlite database tracking dependency-aware tasks. Both tools are moving toward the same model: a lead agent that coordinates a team of specialists.
+Claude Code now ships subagents. You can spawn parallel agents that explore your codebase, review code, write tests, and debug, all at the same time, each in its own context window. Copilot CLI shipped `/fleet` in experimental mode (February 5, 2026), which dispatches parallel subagents with a sqlite database tracking dependency-aware tasks. Both tools are moving toward the same model: a lead agent that coordinates a team of specialists.
+
+<p align="center">
+  <img src="docs/subagent-context.png" alt="Five subagents all reading from the same AGENTS.md" />
+</p>
 
 Subagents don't inherit the main conversation's history. Each one starts with a clean context window. The only shared knowledge they all have is your root instruction file. In Claude Code, that's CLAUDE.md (or AGENTS.md via the symlink). In Copilot CLI, that's your `copilot-instructions.md` pointing to AGENTS.md.
 
-So when you go from one agent to five parallel agents, AGENTS.md goes from "helpful project context" to "the only thing preventing five agents from independently making conflicting decisions about your codebase." The compressed project knowledge, the boundaries section, the gotchas — that's the shared brain. Without it, each subagent rediscovers your project from scratch.
+So when you go from one agent to five parallel agents, AGENTS.md goes from "helpful project context" to "the only thing preventing five agents from independently making conflicting decisions about your codebase." The compressed project knowledge, the boundaries section, the gotchas. That's the shared brain. Without it, each subagent rediscovers your project from scratch.
 
 This is why the template explicitly tells subagents to read `.agents.local.md` too. They won't get it by default. They need the instruction.
 
@@ -202,9 +208,9 @@ Shell scripts in `scripts/` are linted on every push and pull request via <a hre
 
 ## Session logging
 
-The system tells agents to "update the scratchpad at session end." But most agents don't have session-end hooks. Copilot Chat, Cursor, and Windsurf sessions just end when you stop talking — no signal fires, no cleanup runs.
+The system tells agents to "update the scratchpad at session end." But most agents don't have session-end hooks. Copilot Chat, Cursor, and Windsurf sessions end when you stop talking. No signal fires, no cleanup runs.
 
-Claude Code is the exception: it has auto memory and persistent session context that handle this automatically.
+Claude Code handles this well. Its auto memory and persistent session context take care of logging automatically.
 
 For every other agent, session logging only happens if:
 1. The agent sees the instruction early and proactively logs before the conversation ends, or
@@ -219,7 +225,7 @@ But there's no guarantee. If a long debugging session ends abruptly, the learnin
 
 ## After setup
 
-1. **Edit `AGENTS.md`.** Fill in your project name, stack, commands. Replace the placeholder patterns and gotchas with real ones from your codebase. This is the highest-leverage edit you'll make.
+1. **Edit `AGENTS.md`.** Fill in your project name, stack, commands. Replace the placeholder patterns and gotchas with real ones from your codebase. This is the highest-value edit you'll make.
 2. **Fill in `agent_docs/`.** Add deeper references. Delete what doesn't apply.
 3. **Customize `.agents.local.md`.** Add your preferences.
 4. **Work.** The agent reads everything, does the task, updates the scratchpad.
@@ -229,15 +235,15 @@ But there's no guarantee. If a long debugging session ends abruptly, the learnin
 
 | What I learned | Where I learned it |
 |---|---|
-| Write/Select/Compress/Isolate framework | <a href="https://blog.langchain.com/context-engineering-for-agents/">LangChain — Context Engineering for Agents</a> |
-| Instruction budgets, root file discipline | <a href="https://www.humanlayer.dev/blog/writing-a-good-claude-md">HumanLayer — Writing a Good CLAUDE.md</a> |
-| What makes agents.md files actually work | <a href="https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/">GitHub Blog — Lessons from 2,500+ Repositories</a> |
-| Passive context vs skill retrieval eval data | <a href="https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals">Vercel — AGENTS.md Outperforms Skills</a> |
-| Three-tier progressive disclosure | <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">Anthropic — Equipping Agents with Skills</a> |
-| Cross-platform standard adoption | <a href="https://www.aihero.dev/a-complete-guide-to-agents-md">AI Hero — A Complete Guide to AGENTS.md</a> |
-| Subagent context isolation, custom agents | <a href="https://code.claude.com/docs/en/sub-agents">Anthropic — Claude Code Subagents Docs</a> |
+| Write/Select/Compress/Isolate framework | <a href="https://blog.langchain.com/context-engineering-for-agents/">LangChain: Context Engineering for Agents</a> |
+| Instruction budgets, root file discipline | <a href="https://www.humanlayer.dev/blog/writing-a-good-claude-md">HumanLayer: Writing a Good CLAUDE.md</a> |
+| What makes agents.md files actually work | <a href="https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/">GitHub Blog: Lessons from 2,500+ Repositories</a> |
+| Passive context vs skill retrieval eval data | <a href="https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals">Vercel: AGENTS.md Outperforms Skills</a> |
+| Three-tier progressive disclosure | <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">Anthropic: Equipping Agents with Skills</a> |
+| Cross-platform standard adoption | <a href="https://www.aihero.dev/a-complete-guide-to-agents-md">AI Hero: A Complete Guide to AGENTS.md</a> |
+| Subagent context isolation, custom agents | <a href="https://code.claude.com/docs/en/sub-agents">Anthropic: Claude Code Subagents Docs</a> |
 | Parallel fleets with dependency-aware tasks | <a href="https://x.com/_Evan_Boyle/status/2019497961777172488">Copilot CLI /fleet announcement</a> |
-| Built-in agents, auto-compaction, context mgmt | <a href="https://github.blog/changelog/2026-01-14-github-copilot-cli-enhanced-agents-context-management-and-new-ways-to-install/">GitHub Changelog — Copilot CLI Enhanced Agents</a> |
+| Built-in agents, auto-compaction, context mgmt | <a href="https://github.blog/changelog/2026-01-14-github-copilot-cli-enhanced-agents-context-management-and-new-ways-to-install/">GitHub Changelog: Copilot CLI Enhanced Agents</a> |
 
 ## License
 
