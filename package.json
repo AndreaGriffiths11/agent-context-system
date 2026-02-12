@@ -6,6 +6,7 @@
     "SKILL.md",
     "agent-context",
     "AGENTS.md",
+    "openclaw/**/*",
     "github-copilot/**/*",
     "scripts/**/*",
     "agent_docs/**/*",
