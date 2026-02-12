@@ -2,7 +2,7 @@
 name: agent-context
 description: Bootstrap persistent project context for AI coding agents.
 version: 1.1.0
-metadata: {"openclaw": {"emoji": "🧠", "homepage": "https://github.com/AndreaGriffiths11/agent-context-system", "os": ["darwin", "linux"], "requires": {"bins": ["bash", "git"]}, "install": [{"id": "github", "kind": "download", "url": "https://github.com/AndreaGriffiths11/agent-context-system/archive/refs/heads/main.tar.gz", "archive": "tar.gz", "stripComponents": 1, "bins": ["agent-context"], "label": "Download from GitHub"}]}}
+metadata: {"openclaw": {"emoji": "🧠", "homepage": "https://github.com/AndreaGriffiths11/agent-context-system", "os": ["darwin", "linux"], "requires": {"bins": ["bash", "git"]}, "install": [{"id": "github", "kind": "download", "url": "https://github.com/AndreaGriffiths11/agent-context-system/archive/refs/tags/v1.1.0.tar.gz", "archive": "tar.gz", "stripComponents": 1, "bins": ["agent-context"], "label": "Download v1.1.0 from GitHub"}]}}
 ---
 
 # Agent Context System
@@ -36,7 +36,7 @@ agent-context promote   # Find patterns to move from scratchpad to AGENTS.md
 
 ## Workflow
 
-1. **Init**: Run `agent-context init`. Creates `.agents.local.md`, ensures it's gitignored, creates CLAUDE.md symlink.
+1. **Init**: Run `agent-context init`. Creates `.agents.local.md`, ensures it's gitignored, creates CLAUDE.md symlink (Claude Code reads CLAUDE.md, not AGENTS.md — the symlink lets you maintain one file).
 
 2. **Work**: Read both files at session start. `AGENTS.md` = project knowledge. `.agents.local.md` = personal learnings.
 
