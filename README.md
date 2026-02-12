@@ -1,12 +1,16 @@
 # Agent Context System
 
-I keep a running list of fundamentals. Git. Tests. CI. The stuff that doesn't change every six months. The stuff that makes everything else easier once you learn it.
+Coding agents are good at using context. They are bad at keeping it consistent.
 
-I think context engineering just made the list.
+Some tools now offer persistent memory, like GitHub Copilot Memory. That helps, when it is enabled, supported in your surface, and still fresh.
 
-Not because it's trendy. Because I kept having the same frustrating experience: I'd spend an hour getting my coding agent up to speed on a project, close the session, and start from zero the next day. The agent forgot everything. Every session was a cold start.
+But teams still hit the same failures:
+- The "rules of the repo" are scattered across chat threads and tribal knowledge
+- A new agent or subagent starts without the constraints that matter
+- The agent learns something once, then you cannot review it like code
+- Context drifts because nobody promotes stable decisions into a shared source of truth
 
-So I started digging. I read everything I could find on how agents actually consume context, what they ignore, and why some teams get wildly different results from the same tools. What I found changed how I think about working with agents, and I built this template so you don't have to piece it together yourself.
+This project is a small, boring fix. It makes your project context explicit, reviewable, and portable across agents.
 
 ## What this is
 
