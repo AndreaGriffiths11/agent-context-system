@@ -31,8 +31,12 @@ your-repo/
 │   ├── conventions.md
 │   ├── architecture.md
 │   └── gotchas.md
+├── scripts/
+│   └── init-agent-context.sh    # Wrapper → calls agent-context init (for npx skills)
 └── CLAUDE.md                    # Symlink → AGENTS.md (created by init)
 ```
+
+**Note:** `agent-context` is the main CLI. `scripts/init-agent-context.sh` is a thin wrapper for backwards compatibility with `npx skills add` installs — it just calls `agent-context init`.
 
 ## Install
 
