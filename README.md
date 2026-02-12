@@ -178,13 +178,9 @@ If your team uses multiple agents (which is increasingly common — GitHub just 
 
 ### When one agent becomes five
 
-This is the thing that made me rethink the whole template.
-
-<img>
-
 Claude Code now ships subagents. You can spawn parallel agents that explore your codebase, review code, write tests, and debug — all at the same time, each in its own context window. Copilot CLI just shipped `/fleet` in experimental mode (February 5, 2026), which dispatches parallel subagents with a sqlite database tracking dependency-aware tasks. Both tools are moving toward the same model: a lead agent that coordinates a team of specialists.
 
-Here's what caught me: subagents don't inherit the main conversation's history. Each one starts with a clean context window. The only shared knowledge they all have is your root instruction file. In Claude Code, that's CLAUDE.md (or AGENTS.md via the symlink). In Copilot CLI, that's your `copilot-instructions.md` pointing to AGENTS.md.
+Subagents don't inherit the main conversation's history. Each one starts with a clean context window. The only shared knowledge they all have is your root instruction file. In Claude Code, that's CLAUDE.md (or AGENTS.md via the symlink). In Copilot CLI, that's your `copilot-instructions.md` pointing to AGENTS.md.
 
 So when you go from one agent to five parallel agents, AGENTS.md goes from "helpful project context" to "the only thing preventing five agents from independently making conflicting decisions about your codebase." The compressed project knowledge, the boundaries section, the gotchas — that's the shared brain. Without it, each subagent rediscovers your project from scratch.
 
@@ -200,7 +196,7 @@ That playbook is AGENTS.md.
 
 Shell scripts in `scripts/` are linted on every push and pull request via <a href="https://www.shellcheck.net/">ShellCheck</a>. The workflow lives in `.github/workflows/shellcheck.yml`.
 
-## Session logging: the gap you need to know about
+## Session logging
 
 The system tells agents to "update the scratchpad at session end." But most agents don't have session-end hooks. Copilot Chat, Cursor, and Windsurf sessions just end when you stop talking — no signal fires, no cleanup runs.
 
