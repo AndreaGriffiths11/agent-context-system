@@ -4,7 +4,10 @@ description: A persistent local-only memory system for AI coding agents. Two fil
 license: MIT
 metadata:
   author: AndreaGriffiths11
-  version: "1.3.0"
+  version: "1.3.1"
+  requires:
+    bins:
+      - bash
 ---
 
 # Agent Context System
