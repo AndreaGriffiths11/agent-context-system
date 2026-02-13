@@ -40,12 +40,34 @@ your-repo/
 
 ## Install
 
-### OpenClaw users (ClawHub)
+### GitHub Template (new project)
 
 ```bash
-clawhub install agent-context
-agent-context init
+gh repo create my-project --template AndreaGriffiths11/agent-context-system
+cd my-project
+./agent-context init
 ```
+
+### Existing project
+
+```bash
+# Clone the files into your project
+git clone https://github.com/AndreaGriffiths11/agent-context-system.git /tmp/acs
+cp /tmp/acs/AGENTS.md /tmp/acs/agent-context .
+cp -r /tmp/acs/agent_docs /tmp/acs/scripts .
+rm -rf /tmp/acs
+./agent-context init
+```
+
+### OpenClaw users
+
+Clone into your skills directory:
+
+```bash
+git clone https://github.com/AndreaGriffiths11/agent-context-system.git skills/agent-context-system
+```
+
+OpenClaw will pick it up as a workspace skill on the next session.
 
 ### Copilot Custom Skill
 
@@ -55,14 +77,6 @@ bash .agents/skills/agent-context-system/scripts/init-agent-context.sh
 ```
 
 Or copy `github-copilot/SKILL.md` to `.github/skills/agent-context-system/SKILL.md`.
-
-### GitHub Template
-
-```bash
-gh repo create my-project --template AndreaGriffiths11/agent-context-system
-cd my-project
-./agent-context init
-```
 
 ## CLI Commands
 
@@ -124,7 +138,7 @@ AGENTS.md: Cursor, Copilot, Codex, Windsurf all read it. Claude Code still needs
 
 | Agent | Setup |
 |-------|-------|
-| OpenClaw | `clawhub install agent-context` — reads AGENTS.md natively |
+| OpenClaw | Clone into `skills/` directory — reads AGENTS.md natively |
 | Claude Code | `CLAUDE.md` symlink → `AGENTS.md` |
 | Cursor | `.cursorrules` pointing to AGENTS.md |
 | Windsurf | `.windsurfrules` pointing to AGENTS.md |

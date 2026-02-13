@@ -17,14 +17,14 @@ Agents start from zero every session. This skill fixes that.
 ## Quick Start
 
 ```bash
-# Install from ClawHub
-clawhub install agent-context
+# Clone into your OpenClaw skills directory
+git clone https://github.com/AndreaGriffiths11/agent-context-system.git skills/agent-context-system
 
 # Initialize in your project
 agent-context init
 ```
 
-All files (CLI, templates, docs) are distributed through the ClawHub bundle. No external downloads.
+All files (CLI, templates, docs) are included in the repo. No external downloads.
 
 ## Commands
 
@@ -79,7 +79,7 @@ agent-context promote   # Find patterns to move from scratchpad to AGENTS.md
 
 ## Security
 
-- **No external downloads.** All skill files are distributed through the ClawHub bundle. Nothing is fetched from GitHub or other URLs at install time.
+- **No external downloads.** All skill files are included in the repository. No binaries are downloaded from external URLs at install time.
 - **Scratchpad writes require user confirmation.** The agent must show proposed session log entries to the user and wait for approval before appending to `.agents.local.md`.
 - **`.agents.local.md` is gitignored.** The init script ensures this. Personal scratchpad data is never committed to version control.
 - **Path-scoped operations.** The CLI only operates within the current working directory. It does not follow symlinks outside the project root or write to paths containing `..`.
