@@ -36,215 +36,25 @@ your-repo/
 └── CLAUDE.md                    # Symlink → AGENTS.md (created by init)
 ```
 
-**Note:** `agent-context` is the main CLI. `scripts/init-agent-context.sh` is a thin wrapper for backwards compatibility with `npx skills add` installs — it just calls `agent-context init`.
-
-## Install
-
-Choose **one** method based on your agent and needs:
-
-### Option A: GitHub Copilot (Recommended)
-
-Use the official Copilot skill registry. Gets you updates automatically.
+## Quick Start
 
 ```bash
-npx skills add AndreaGriffiths11/agent-context-system
-bash .agents/skills/agent-context-system/scripts/init-agent-context.sh
-```
-
-### Option B: OpenClaw
-
-Clone into your skills directory. Works natively with OpenClaw's skill system.
-
-```bash
-git clone https://github.com/AndreaGriffiths11/agent-context-system.git skills/agent-context-system
-```
-
-Restart your OpenClaw session. It will read `AGENTS.md` automatically.
-
-### Option C: Manual (Any Agent)
-
-Copy just the files you need. Good for customizing or if you don't want package managers.
-
-```bash
-# Clone to a temp location
-git clone https://github.com/AndreaGriffiths11/agent-context-system.git /tmp/acs
-
-# Copy the core files
-cp /tmp/acs/AGENTS.md /tmp/acs/agent-context ./
-cp -r /tmp/acs/agent_docs /tmp/acs/scripts ./
-
-# Initialize
-./agent-context init
-
-# Cleanup
-rm -rf /tmp/acs
-```
-
-Then add your agent's config file manually:
-- **Claude Code:** Already handled by `init` (creates `CLAUDE.md` symlink)
-- **Cursor:** Create `.cursorrules` with `Read AGENTS.md before starting`
-- **Windsurf:** Create `.windsurfrules` with `Read AGENTS.md before starting`
-- **Copilot:** Create `.github/copilot-instructions.md` with `Read AGENTS.md before starting`
-
-### Option D: GitHub Template (New Project)
-
-Start a new repo from this template, then initialize.
-
-```bash
-gh repo create my-project --template AndreaGriffiths11/agent-context-system
-cd my-project
 ./agent-context init
 ```
 
-### Option E: Fork (Contributors/Customizers)
+This creates `AGENTS.md`, `.agents.local.md`, symlinks, and adds gitignore entries. See [setup docs](docs/setup.md) for all install options.
 
-Fork this repo if you want to customize templates or contribute back.
+## Docs
 
-```bash
-gh repo fork AndreaGriffiths11/agent-context-system
-git clone https://github.com/YOUR_USERNAME/agent-context-system.git
-```
-
----
-
-**Which should I choose?**
-
-| If you... | Use |
-|-----------|-----|
-| Use GitHub Copilot and want easy updates | **Option A** |
-| Use OpenClaw | **Option B** |
-| Use Cursor, Claude Code, Windsurf, or multiple agents | **Option C** |
-| Starting a new project from scratch | **Option D** |
-| Want to customize or contribute | **Option E** |
-
-## CLI Commands
-
-```bash
-agent-context init      # Set up context system in current project
-agent-context validate  # Check setup is correct
-agent-context promote   # Find patterns to move from scratchpad to AGENTS.md
-agent-context promote --autopromote  # Auto-append patterns recurring 3+ times
-```
-
-## How knowledge moves
-
-<img width="955" height="502" alt="knowledge flow" src="https://github.com/user-attachments/assets/a5c29763-9eb4-48ef-878d-935797b6febe" />
-
-1. **Write**: Agent logs learnings to `.agents.local.md` at session end
-2. **Compress**: Scratchpad compresses when it hits 300 lines
-3. **Flag**: Patterns recurring 3+ times get flagged "Ready to Promote"
-4. **Promote**: Run `agent-context promote` to review, or `--autopromote` to auto-append to `AGENTS.md`
-
----
-
-<details>
-<summary><strong>The Research (Why this works)</strong></summary>
-
-### Agents have an instruction budget (~150-200 instructions)
-
-HumanLayer found frontier LLMs reliably follow about 150-200 instructions. Claude Code's system prompt eats ~50. That's why `AGENTS.md` stays under 120 lines.
-
-### Available docs ≠ used docs
-
-Vercel ran evals:
-- No docs: 53% pass rate
-- Skills where agent decides when to read: **53%** (identical to nothing)
-- Compressed docs embedded in root file: **100%**
-
-When docs are embedded directly, the agent cannot miss them.
-
-### Context has a lifecycle
-
-LangChain's framework: Write, Select, Compress, Isolate.
-
-- **Write**: Scratchpad at session end
-- **Select**: Read both files at start
-- **Compress**: At 300 lines, dedupe and merge
-- **Isolate**: Project vs personal (committed vs gitignored)
-
-### Deep docs load on demand
-
-AGENTS.md every time. `agent_docs/` only when the task needs depth.
-
-### One file, every tool
-
-AGENTS.md: Cursor, Copilot, Codex, Windsurf all read it. Claude Code still needs CLAUDE.md (symlink handled by init).
-
-</details>
-
-<details>
-<summary><strong>Agent Compatibility</strong></summary>
-
-| Agent | Setup |
-|-------|-------|
-| OpenClaw | Clone into `skills/` directory — reads AGENTS.md natively |
-| Claude Code | `CLAUDE.md` symlink → `AGENTS.md` |
-| Cursor | `.cursorrules` pointing to AGENTS.md |
-| Windsurf | `.windsurfrules` pointing to AGENTS.md |
-| GitHub Copilot | `.github/copilot-instructions.md` pointing to AGENTS.md |
-
-**Claude Code note:** Auto memory (late 2025) handles session-to-session learning in `~/.claude/projects/<project>/memory/`. If you use Claude exclusively, auto memory covers the scratchpad's job. The value here is AGENTS.md itself: structured promotion pathway, instruction budget discipline, and cross-agent compatibility.
-
-</details>
-
-<details>
-<summary><strong>Subagents: When one becomes five</strong></summary>
-
-Claude Code has subagents. Copilot CLI has `/fleet` (experimental). Both dispatch parallel agents that don't inherit conversation history.
-
-<img width="855" height="635" alt="subagent context isolation" src="https://github.com/user-attachments/assets/c561960b-6f87-4753-9381-8762c35cbcb6" />
-
-Each subagent starts fresh. The only shared brain is your root instruction file. AGENTS.md goes from "helpful context" to "the only thing preventing five agents from making conflicting decisions."
-
-This is why the template explicitly tells subagents to read `.agents.local.md` too. They won't get it otherwise.
-
-</details>
-
-<details>
-<summary><strong>Session Logging Reality</strong></summary>
-
-Agents don't have session-end hooks. Sessions end when you stop talking. Logging only happens if:
-
-1. Agent proactively logs before conversation ends (rare), or
-2. **You prompt it:** "log this session" or "update the scratchpad"
-
-Claude Code handles this well with auto memory. For others, get in the habit of prompting for the log when meaningful work was done.
-
-</details>
-
----
-
-## After setup
-
-1. **Edit `AGENTS.md`** — Fill in your project name, stack, commands. Replace placeholders with real patterns from your codebase.
-2. **Fill in `agent_docs/`** — Add deeper references. Delete what doesn't apply.
-3. **Customize `.agents.local.md`** — Add your preferences.
-4. **Work** — Agent reads both files, does the task, updates scratchpad.
-5. **Promote** — Run `agent-context promote` to see flagged patterns. Move stable ones to AGENTS.md.
-
-## FAQ
-
-**I use OpenClaw. Do I need this?**
-
-If OpenClaw is your only coding agent, you probably don't — OpenClaw reads AGENTS.md natively. But if you also code with Claude Code, Cursor, Copilot, or Windsurf, agent-context gives you one shared context file that works across every agent. Write your project rules once, every tool picks them up.
-
-**How is this different from built-in memory (Claude auto memory, Copilot Memory)?**
-
-Built-in memory learns about *you* — your preferences, patterns, style. Agent-context handles what every agent needs to know about *your project* — stack, conventions, architecture decisions. It's shared, version-controlled, and reviewable in PRs.
-
-**Why 120 lines?**
-
-HumanLayer found frontier LLMs follow ~150-200 instructions reliably. Your agent's system prompt uses ~50. That leaves ~120 for project context. Deeper docs go in `agent_docs/` and load on demand.
-
-## Sources
-
-| Finding | Source |
-|---------|--------|
-| Instruction budgets | [HumanLayer](https://www.humanlayer.dev/blog/writing-a-good-claude-md) |
-| Passive context 100% pass rate | [Vercel](https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals) |
-| 2,500+ repos analyzed | [GitHub](https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/) |
-| Context lifecycle framework | [LangChain](https://blog.langchain.com/context-engineering-for-agents/) |
-| Three-tier progressive disclosure | [Anthropic](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) |
+| Doc | What's in it |
+|-----|-------------|
+| [Setup](docs/setup.md) | All install options (Copilot, OpenClaw, manual, template, fork) |
+| [How It Works](docs/how-it-works.md) | Knowledge flow, session logging, promotion workflow |
+| [Architecture](docs/architecture.md) | File structure, AGENTS.md and .agents.local.md templates |
+| [Agent Compatibility](docs/agent-compatibility.md) | Supported agents, Claude Code auto memory, subagent context |
+| [Research](docs/research.md) | Instruction budgets, Vercel evals, context lifecycle |
+| [Security](docs/security.md) | What's committed vs gitignored, team considerations |
+| [FAQ](docs/faq.md) | Common questions |
 
 ## License
 
