@@ -47,9 +47,34 @@ Here's what `.agents.local.md` looks like with auto-reflect enabled:
 | Gotcha | pnpm build hides type errors | Always run with --noEmit flag or type errors pass silently |
 ```
 
+## Promotion Mode
+
+Control how promotions work by adding a config block to the top of `.agents.local.md`:
+
+```markdown
+<!-- auto-reflect: promote=auto -->
+```
+
+Three modes:
+
+| Mode | Behavior |
+|------|----------|
+| `suggest` (default) | Agent writes suggestions to `## Ready to Promote`. Human decides what moves to `AGENTS.md`. |
+| `auto` | Agent promotes patterns directly to `AGENTS.md` after 3+ recurrences. No human approval needed. |
+| `off` | No reflection pass. Observations still collected if enabled. |
+
+With `promote=auto`, the agent:
+1. Identifies patterns recurring 3+ sessions
+2. Writes them directly to the appropriate section in `AGENTS.md`
+3. Logs what was promoted under `## Auto-Promoted` in `.agents.local.md` so you can review after the fact
+4. Removes the promoted items from `## Ready to Promote`
+
+You can always switch modes. If auto-promote adds something you don't want, just delete it from `AGENTS.md` — it's version-controlled.
+
 ## How It Stays Safe
 
-- Promotions are suggestions, never automatic writes to `AGENTS.md`
+- In `suggest` mode (default), promotions never touch `AGENTS.md` without human approval
+- In `auto` mode, all promotions are logged and reversible via git
 - Observations are appended, never edited or deleted by the agent
 - The scratchpad remains gitignored — observations never leak to version control
 - Content is treated as data, not instructions (same security model as the rest of the system)
