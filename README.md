@@ -56,6 +56,12 @@ This creates `AGENTS.md`, `.agents.local.md`, symlinks, and adds gitignore entri
 | [Security](docs/security.md) | What's committed vs gitignored, team considerations |
 | [FAQ](docs/faq.md) | Common questions |
 
+## Auto-Reflect
+
+New: agents can now observe during sessions and reflect at session end, automatically surfacing patterns worth promoting to `AGENTS.md`. Inspired by [Mastra's Observational Memory](https://mastra.ai/research/observational-memory), adapted for the file-based world — zero infrastructure, works with any agent.
+
+→ [docs/auto-reflect.md](docs/auto-reflect.md)
+
 ## License
 
 MIT
