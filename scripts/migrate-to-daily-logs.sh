@@ -18,8 +18,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-log_info() { echo -e "${GREEN}[INFO]${NC} $*"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_info() { printf "${GREEN}[INFO]${NC} %s\n" "$*"; }
+log_warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
 
 # Check if already migrated
 if [[ -d "$LOGS_DIR" ]] || [[ -d "$TOPICS_DIR" ]]; then
