@@ -50,10 +50,14 @@ write_lock() {
 
 # Time gate: Check if enough time has passed since last consolidation
 check_time_gate() {
-  local lock_json=$(read_lock)
-  local last_at=$(echo "$lock_json" | grep -o '"last_consolidated_at":[0-9]*' | cut -d: -f2)
-  local now_ms=$(current_timestamp_ms)
-  local hours_since=$(echo "scale=1; ($now_ms - $last_at) / 3600000" | bc)
+  local lock_json
+  lock_json=$(read_lock)
+  local last_at
+  last_at=$(echo "$lock_json" | grep -o '"last_consolidated_at":[0-9]*' | cut -d: -f2)
+  local now_ms
+  now_ms=$(current_timestamp_ms)
+  local hours_since
+  hours_since=$(echo "scale=1; ($now_ms - $last_at) / 3600000" | bc)
   
   if (( $(echo "$hours_since >= $MIN_HOURS" | bc -l) )); then
     echo "PASS:$hours_since"
@@ -64,8 +68,10 @@ check_time_gate() {
 
 # Session gate: Count sessions since last consolidation
 check_session_gate() {
-  local lock_json=$(read_lock)
-  local last_at=$(echo "$lock_json" | grep -o '"last_consolidated_at":[0-9]*' | cut -d: -f2)
+  local lock_json
+  lock_json=$(read_lock)
+  local last_at
+  last_at=$(echo "$lock_json" | grep -o '"last_consolidated_at":[0-9]*' | cut -d: -f2)
   
   # Count daily log files modified since last consolidation
   local session_count=0
@@ -88,9 +94,12 @@ check_session_gate() {
 
 # Lock gate: Check if consolidation lock is available
 check_lock_gate() {
-  local lock_json=$(read_lock)
-  local locked_by=$(echo "$lock_json" | grep -o '"locked_by":"[^"]*"' | cut -d'"' -f4)
-  local locked_at=$(echo "$lock_json" | grep -o '"locked_at":[0-9]*' | cut -d: -f2)
+  local lock_json
+  lock_json=$(read_lock)
+  local locked_by
+  locked_by=$(echo "$lock_json" | grep -o '"locked_by":"[^"]*"' | cut -d'"' -f4)
+  local locked_at
+  locked_at=$(echo "$lock_json" | grep -o '"locked_at":[0-9]*' | cut -d: -f2)
   
   if [[ "$locked_by" == "null" || -z "$locked_by" ]]; then
     echo "PASS:available"
@@ -98,8 +107,10 @@ check_lock_gate() {
   fi
   
   # Check if lock is stale
-  local now_ms=$(current_timestamp_ms)
-  local age_minutes=$(echo "scale=1; ($now_ms - $locked_at) / 60000" | bc)
+  local now_ms
+  now_ms=$(current_timestamp_ms)
+  local age_minutes
+  age_minutes=$(echo "scale=1; ($now_ms - $locked_at) / 60000" | bc)
   
   if (( $(echo "$age_minutes > $LOCK_TIMEOUT_MINUTES" | bc -l) )); then
     echo "PASS:stale:$age_minutes"
@@ -111,11 +122,15 @@ check_lock_gate() {
 # Acquire lock
 acquire_lock() {
   local session_id="${1:-manual-consolidation}"
-  local lock_json=$(read_lock)
-  local last_at=$(echo "$lock_json" | grep -o '"last_consolidated_at":[0-9]*' | cut -d: -f2)
-  local now_ms=$(current_timestamp_ms)
+  local lock_json
+  lock_json=$(read_lock)
+  local last_at
+  last_at=$(echo "$lock_json" | grep -o '"last_consolidated_at":[0-9]*' | cut -d: -f2)
+  local now_ms
+  now_ms=$(current_timestamp_ms)
   
-  local new_lock=$(cat <<EOF
+  local new_lock
+  new_lock=$(cat <<EOF
 {
   "last_consolidated_at": $last_at,
   "locked_by": "$session_id",
@@ -130,10 +145,13 @@ EOF
 
 # Release lock
 release_lock() {
-  local lock_json=$(read_lock)
-  local now_ms=$(current_timestamp_ms)
+  local lock_json
+  lock_json=$(read_lock)
+  local now_ms
+  now_ms=$(current_timestamp_ms)
   
-  local new_lock=$(cat <<EOF
+  local new_lock
+  new_lock=$(cat <<EOF
 {
   "last_consolidated_at": $now_ms,
   "locked_by": null,
@@ -148,29 +166,38 @@ EOF
 
 # Check all gates
 should_trigger() {
-  local time_result=$(check_time_gate)
-  local time_status=$(echo "$time_result" | cut -d: -f1)
-  local hours_since=$(echo "$time_result" | cut -d: -f2)
+  local time_result
+  time_result=$(check_time_gate)
+  local time_status
+  time_status=$(echo "$time_result" | cut -d: -f1)
+  local hours_since
+  hours_since=$(echo "$time_result" | cut -d: -f2)
   
   if [[ "$time_status" == "FAIL" ]]; then
     log_warn "Time gate failed: ${hours_since}h < ${MIN_HOURS}h"
     return 1
   fi
   
-  local session_result=$(check_session_gate)
-  local session_status=$(echo "$session_result" | cut -d: -f1)
-  local session_count=$(echo "$session_result" | cut -d: -f2)
+  local session_result
+  session_result=$(check_session_gate)
+  local session_status
+  session_status=$(echo "$session_result" | cut -d: -f1)
+  local session_count
+  session_count=$(echo "$session_result" | cut -d: -f2)
   
   if [[ "$session_status" == "FAIL" ]]; then
     log_warn "Session gate failed: ${session_count} < ${MIN_SESSIONS}"
     return 1
   fi
   
-  local lock_result=$(check_lock_gate)
-  local lock_status=$(echo "$lock_result" | cut -d: -f1)
+  local lock_result
+  lock_result=$(check_lock_gate)
+  local lock_status
+  lock_status=$(echo "$lock_result" | cut -d: -f1)
   
   if [[ "$lock_status" == "FAIL" ]]; then
-    local lock_info=$(echo "$lock_result" | cut -d: -f2-)
+    local lock_info
+    lock_info=$(echo "$lock_result" | cut -d: -f2-)
     log_warn "Lock gate failed: $lock_info"
     return 1
   fi
