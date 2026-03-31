@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Migrate .agents.local.md to daily logs + topic files structure
 #
 # Usage:

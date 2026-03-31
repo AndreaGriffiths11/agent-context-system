@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Auto-consolidation trigger for agent-context-system
 #
 # Checks time gate, session gate, and lock gate.

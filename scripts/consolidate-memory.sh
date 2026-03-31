@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Memory consolidation for agent-context-system
 #
 # 4-phase process:
