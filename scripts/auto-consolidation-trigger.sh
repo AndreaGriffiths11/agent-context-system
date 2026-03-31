@@ -56,10 +56,12 @@ check_time_gate() {
   last_at=$(echo "$lock_json" | grep -o '"last_consolidated_at":[0-9]*' | cut -d: -f2)
   local now_ms
   now_ms=$(current_timestamp_ms)
-  local hours_since
-  hours_since=$(echo "scale=1; ($now_ms - $last_at) / 3600000" | bc)
   
-  if (( $(echo "$hours_since >= $MIN_HOURS" | bc -l) )); then
+  # Calculate hours since (integer arithmetic)
+  local ms_diff=$((now_ms - last_at))
+  local hours_since=$((ms_diff / 3600000))
+  
+  if (( hours_since >= MIN_HOURS )); then
     echo "PASS:$hours_since"
   else
     echo "FAIL:$hours_since"
@@ -109,10 +111,12 @@ check_lock_gate() {
   # Check if lock is stale
   local now_ms
   now_ms=$(current_timestamp_ms)
-  local age_minutes
-  age_minutes=$(echo "scale=1; ($now_ms - $locked_at) / 60000" | bc)
   
-  if (( $(echo "$age_minutes > $LOCK_TIMEOUT_MINUTES" | bc -l) )); then
+  # Calculate age in minutes (integer arithmetic)
+  local ms_diff=$((now_ms - locked_at))
+  local age_minutes=$((ms_diff / 60000))
+  
+  if (( age_minutes > LOCK_TIMEOUT_MINUTES )); then
     echo "PASS:stale:$age_minutes"
   else
     echo "FAIL:locked_by=$locked_by:age=$age_minutes"
