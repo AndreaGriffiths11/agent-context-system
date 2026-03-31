@@ -58,9 +58,24 @@ This creates `AGENTS.md`, `.agents.local.md`, symlinks, and adds gitignore entri
 
 ## Auto-Reflect
 
-New: agents can now observe during sessions and reflect at session end, automatically surfacing patterns worth promoting to `AGENTS.md`. Inspired by [Mastra's Observational Memory](https://mastra.ai/research/observational-memory), adapted for the file-based world — zero infrastructure, works with any agent.
+Agents can now observe during sessions and reflect at session end, automatically surfacing patterns worth promoting to `AGENTS.md`. Inspired by [Mastra's Observational Memory](https://mastra.ai/research/observational-memory), adapted for the file-based world — zero infrastructure, works with any agent.
 
 → [docs/auto-reflect.md](docs/auto-reflect.md)
+
+## Auto-Consolidation (NEW)
+
+**Automatic memory consolidation** inspired by [claude-code's auto-dream system](https://github.com/lowcortisolprogrammer/claude-code).
+
+Daily logs are consolidated into topic files automatically when:
+- ≥24 hours since last consolidation
+- ≥5 sessions accumulated
+- No other consolidation in progress
+
+**4-phase process:** Orient → Gather → Consolidate → Prune  
+**Compression:** ~9:1 ratio (107 KB → 11.6 KB validated)  
+**Structure:** Daily logs (append-only) + topic files (curated) + index (200 lines max)
+
+→ [docs/auto-consolidation.md](docs/auto-consolidation.md)
 
 ## License
 
