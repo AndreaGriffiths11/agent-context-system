@@ -13,7 +13,6 @@
 set -euo pipefail
 
 AGENTS_DIR="${AGENTS_DIR:-.agents}"
-INDEX_FILE="$AGENTS_DIR/local.md"
 LOGS_DIR="$AGENTS_DIR/logs"
 TOPICS_DIR="$AGENTS_DIR/topics"
 LOCK_FILE="$AGENTS_DIR/.consolidation-lock"
@@ -66,7 +65,7 @@ fi
 
 # Find recent daily logs
 log_info "Scanning for daily logs from last $DAYS days..."
-CUTOFF_DATE=$(date -d "$DAYS days ago" +%Y-%m-%d 2>/dev/null || date -v-${DAYS}d +%Y-%m-%d 2>/dev/null || echo "2000-01-01")
+CUTOFF_DATE=$(date -d "$DAYS days ago" +%Y-%m-%d 2>/dev/null || date -v-"${DAYS}"d +%Y-%m-%d 2>/dev/null || echo "2000-01-01")
 
 recent_logs=()
 total_size=0

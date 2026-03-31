@@ -15,7 +15,6 @@ MIN_SESSIONS=5
 LOCK_TIMEOUT_MINUTES=30
 AGENTS_DIR="${AGENTS_DIR:-.agents}"
 LOCK_FILE="$AGENTS_DIR/.consolidation-lock"
-LOCAL_MD="$AGENTS_DIR/local.md"
 
 # Colors
 RED='\033[0;31m'
@@ -80,7 +79,8 @@ check_session_gate() {
   if [[ -d "$AGENTS_DIR/logs" ]]; then
     local cutoff_seconds=$((last_at / 1000))
     while IFS= read -r log_file; do
-      local mtime=$(stat -c %Y "$log_file" 2>/dev/null || stat -f %m "$log_file" 2>/dev/null || echo 0)
+      local mtime
+      mtime=$(stat -c %Y "$log_file" 2>/dev/null || stat -f %m "$log_file" 2>/dev/null || echo 0)
       if (( mtime > cutoff_seconds )); then
         ((session_count++))
       fi
@@ -148,6 +148,7 @@ EOF
 }
 
 # Release lock
+# shellcheck disable=SC2329  # Function reserved for future use
 release_lock() {
   local lock_json
   lock_json=$(read_lock)
@@ -230,8 +231,10 @@ main() {
       ;;
     --force)
       log_info "Force mode: bypassing time and session gates"
-      local lock_result=$(check_lock_gate)
-      local lock_status=$(echo "$lock_result" | cut -d: -f1)
+      local lock_result
+      lock_result=$(check_lock_gate)
+      local lock_status
+      lock_status=$(echo "$lock_result" | cut -d: -f1)
       
       if [[ "$lock_status" == "FAIL" ]]; then
         log_error "Lock is busy, cannot force trigger"
