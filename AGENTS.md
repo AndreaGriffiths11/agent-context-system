@@ -26,6 +26,7 @@
 src/           → Application source
 tests/         → Test files
 agent_docs/    → Deep-dive references (read only when needed)
+.agents/       → Memory system (local.md index, logs/, topics/)
 ```
 
 ## Project Knowledge (Compressed)
@@ -65,13 +66,13 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Trust
 
 ## Rules
 
-1. Read this file and `.agents.local.md` (if it exists) before starting any task. This applies whether you are the main agent or a subagent.
+1. Read this file and `.agents/local.md` (if it exists) before starting any task. This applies whether you are the main agent or a subagent.
 2. Plan before you code. State what you'll change and why.
 3. Locate the exact files and lines before making changes.
 4. Only touch what the task requires.
 5. Run tests after every change. Run lint before committing.
 6. Summarize every file modified and what changed.
-7. At session end, append to `.agents.local.md` Session Log: what changed, what worked, what didn't, decisions made, patterns learned. If the user ends the session without asking, prompt them to let you log it. Run `agent-context promote` to review candidates, or `agent-context promote --autopromote` to auto-append patterns recurring 3+ times.
+7. At session end, append to `.agents/logs/YYYY-MM-DD.md` (today's daily log): what changed, what worked, what didn't, decisions made, patterns learned. If the user ends the session without asking, prompt them to let you log it.
 
 ## Deep References (Read Only When Needed)
 
@@ -81,16 +82,66 @@ For tasks requiring deeper context than the compressed knowledge above:
 - `agent_docs/architecture.md` — System design, data flow, key decisions
 - `agent_docs/gotchas.md` — Extended known traps with full explanations
 
-## Local Context
+## Memory System (New)
 
-Read `.agents.local.md` at session start. Update it at session end (Rule 7). Subagents: explicitly read `.agents.local.md` — you don't inherit conversation history.
+**Structure:**
+```
+.agents/
+├── local.md                    # Index (200 lines max, ~25KB cap)
+├── logs/
+│   ├── 2026-03-25.md           # Daily log (append-only)
+│   ├── 2026-03-26.md           # Daily log (append-only)
+│   └── 2026-03-31.md           # Daily log (append-only)
+└── topics/
+    ├── patterns.md             # Curated patterns
+    ├── gotchas.md              # Curated gotchas
+    └── preferences.md          # Curated preferences
+```
 
-If the scratchpad exceeds 300 lines, compress: deduplicate and merge. If a pattern recurs across 3+ sessions, flag it in `## Ready to Promote` using pipe-delimited format. The human promotes to this file.
+**Workflow:**
+1. **Session start:** Read `.agents/local.md` (index) + relevant topic files
+2. **During session:** Observe patterns, gotchas, preferences
+3. **Session end:** Append to today's daily log (`.agents/logs/YYYY-MM-DD.md`)
+4. **Auto-consolidation:** Every 24h + 5 sessions, consolidate logs → topic files
 
-### Promotion Workflow
-- During compression (300+ lines), flag patterns that recurred 3+ sessions in `.agents.local.md` → "Ready to Promote"
-- Use pipe-delimited format: `pattern | context` → target section (Patterns, Gotchas, or Boundaries)
-- Run `agent-context promote --autopromote` to automatically append flagged patterns to AGENTS.md
-- Or review manually with `agent-context promote` and decide what moves to this file
-- After promoting: remove the item from Ready to Promote in `.agents.local.md`
-- If an item is already captured in AGENTS.md, clear it from Ready to Promote — don't duplicate
+**Consolidation (automatic):**
+- **Triggers:** ≥24h since last + ≥5 sessions accumulated
+- **Process:** 4 phases (orient/gather/consolidate/prune)
+- **Result:** Daily logs → topic files, index updated
+- **Compression:** ~9:1 ratio (107 KB → 11.6 KB validated)
+
+**Manual consolidation:**
+```bash
+./scripts/auto-consolidation-trigger.sh --check  # Check if should trigger
+./scripts/consolidate-memory.sh                  # Run consolidation
+```
+
+**Migration:**
+If you have old `.agents.local.md`:
+```bash
+./scripts/migrate-to-daily-logs.sh  # Migrate to new structure
+```
+
+**Index format (`.agents/local.md`):**
+```markdown
+# Memory Index
+
+## Patterns
+- [Result<T> Pattern](topics/patterns.md#result-pattern) — Error handling (seen 5 sessions)
+
+## Gotchas
+- [pnpm build hides errors](topics/gotchas.md#pnpm-build) — Always use --noEmit flag
+
+## Preferences
+- [Dark mode everywhere](topics/preferences.md#dark-mode) — All editors, terminals
+```
+
+**Rules:**
+- Daily logs are **append-only** (never edit past logs)
+- Topic files are **curated** (de-duplicated, dated, merged)
+- Index is a **pointer** (not content storage)
+- Each index entry: one line, ~150 chars max
+- Consolidation converts relative dates → absolute dates
+- Never store secrets (API keys, tokens, passwords)
+
+**Lock file:** `.agents/.consolidation-lock` (prevents concurrent consolidation)
