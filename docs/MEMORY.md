@@ -21,7 +21,7 @@ AI agents need memory that survives session restarts. Most solutions either:
 ## Installation
 
 ```bash
-pip install agent-context
+pip install git+https://github.com/AndreaGriffiths11/agent-context-system.git@v0.2.0
 ```
 
 Or from source:
@@ -62,6 +62,12 @@ status = memory.check_consolidation_needed(
     min_sessions=5
 )
 print(f"Consolidation needed: {status['needed']}")
+
+# Run consolidation
+if status['needed']:
+    stats = memory.consolidate(days=7)
+    print(f"Processed {stats.daily_logs_processed} logs")
+    print(f"Compression: {stats.compression_ratio:.1f}:1")
 ```
 
 ## Features
@@ -115,6 +121,34 @@ memory/
 ```
 
 **Compression ratio:** 9:1 (107 KB → 11.6 KB)
+
+### Running Consolidation (v0.2.0+)
+
+**Rule-based consolidation (default):**
+```python
+stats = memory.consolidate(days=7, llm_consolidate=False)
+# Simple merge into consolidated.md
+# Fast, reliable, 1:1 compression
+```
+
+**LLM-based consolidation (advanced):**
+```python
+# Requires: gh copilot CLI installed
+stats = memory.consolidate(days=7, llm_consolidate=True)
+# Smart de-duplication
+# Relative → absolute dates ("yesterday" → "2026-04-11")
+# Topic detection
+# Expected: 5-9:1 compression
+```
+
+**Consolidation stats:**
+```python
+print(f"Processed: {stats.daily_logs_processed} logs")
+print(f"Input: {stats.total_input_bytes / 1024:.1f} KB")
+print(f"Output: {stats.total_output_bytes / 1024:.1f} KB")
+print(f"Compression: {stats.compression_ratio:.1f}:1")
+print(f"Duration: {stats.duration_seconds:.2f}s")
+```
 
 ### Context-Window Awareness
 
@@ -202,7 +236,7 @@ Memory(
 - `search(query, limit=10, days=None, case_sensitive=False)` → List[MemoryEntry]
 - `get_index(max_lines=None, max_bytes=None)` → str
 - `check_consolidation_needed(min_hours=24, min_sessions=5)` → dict
-- `consolidate(days=7, dry_run=False)` → ConsolidationStats
+- `consolidate(days=7, dry_run=False, llm_consolidate=False)` → ConsolidationStats
 
 ### MemoryEntry
 
@@ -309,13 +343,20 @@ workspace/
 
 ## Roadmap
 
-### Phase 1: File-Based Core ✅
+### Phase 1: File-Based Core ✅ (v0.1.0)
 - [x] Append-only daily logs
 - [x] Keyword search
 - [x] Consolidation gates
 - [x] Lock mechanism
 - [x] Context-ready index
 - [x] Unit tests (19/19 passing)
+
+### Phase 1.5: Full Consolidation ✅ (v0.2.0)
+- [x] Rule-based consolidation (simple merge)
+- [x] Optional LLM consolidation (GitHub Copilot CLI)
+- [x] 4-phase consolidation process
+- [x] Index pruning (enforce 200 lines / 25KB)
+- [x] Topic file management
 
 ### Phase 2: Semantic Search (Next)
 - [ ] Optional vector embeddings (sentence-transformers)
@@ -333,6 +374,7 @@ workspace/
 - [ ] Pluggable backends (file, SQLite, Qdrant, Pinecone)
 - [ ] Async consolidation
 - [ ] Distributed locking
+- [ ] Metrics & monitoring
 - [ ] Metrics & monitoring
 
 ## Contributing

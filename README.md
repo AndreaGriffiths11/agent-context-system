@@ -1,82 +1,125 @@
-# Agent Context System
+# agent-context
 
-Coding agents are good at using context. They are terrible at keeping it consistent.
+**Production-tested memory system for AI agents**
 
-Tools like GitHub Copilot Memory are doing great work on the individual side. Copilot remembers your preferences, your patterns, your stack. That's a real step forward for developer experience.
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.0)
+[![Tests](https://img.shields.io/badge/tests-19%2F19%20passing-green)](https://github.com/AndreaGriffiths11/agent-context-system/tree/main/tests)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-But there's a layer that built-in memory doesn't cover: shared, reviewable, version-controlled project context. The stuff that lives in your repo and works across every agent your team uses. Teams still hit the same walls:
+---
 
-- The "rules of the repo" live in chat threads and tribal knowledge
-- A new agent or subagent starts without the constraints that matter
-- The agent learns something once, then you can't review it like code
-- Context drifts because nobody promotes stable decisions into a shared source of truth
+## Features
 
-This project is a small, boring fix. It doesn't replace built-in memory. It complements it. Built-in memory handles what the tool learns about *you*. This handles what every agent needs to know about *your project*. It makes that context explicit, reviewable, and portable.
+- ✅ **Append-only daily logs** — Never lose data, full audit trail
+- ✅ **Auto-consolidation** — 9:1 compression ratio (107 KB → 11.6 KB)
+- ✅ **Context-window aware** — MEMORY.md capped at 200 lines / 25KB
+- ✅ **Zero dependencies** — Plain markdown files, fully offline
+- ✅ **Keyword search** — Fast, score-ranked results
+- ✅ **Lock mechanism** — Prevents concurrent consolidation
 
-## What this is
-
-Two markdown files. One committed, one gitignored. The agent reads both at the start of every session and updates the local one at the end.
-
-- `AGENTS.md` is your project's source of truth. Committed and shared. Always in the agent's prompt.
-- `.agents.local.md` is your personal scratchpad. Gitignored. It grows over time as the agent logs what it learns each session.
-
-That's it. No plugins, no infrastructure, no background processes. The convention lives inside the files themselves, and the agent follows it.
-
-```
-your-repo/
-├── AGENTS.md                    # Committed. Always loaded. Under 120 lines.
-├── .agents.local.md             # Gitignored. Personal scratchpad.
-├── agent-context                # CLI: init, validate, promote commands.
-├── agent_docs/                  # Deeper docs. Read only when needed.
-│   ├── conventions.md
-│   ├── architecture.md
-│   └── gotchas.md
-├── scripts/
-│   └── init-agent-context.sh    # Wrapper → calls agent-context init (for npx skills)
-└── CLAUDE.md                    # Symlink → AGENTS.md (created by init)
-```
+---
 
 ## Quick Start
 
 ```bash
-./agent-context init
+pip install git+https://github.com/AndreaGriffiths11/agent-context-system.git@v0.2.0
 ```
 
-This creates `AGENTS.md`, `.agents.local.md`, symlinks, and adds gitignore entries. See [setup docs](docs/setup.md) for all install options.
+```python
+from pathlib import Path
+from agent_context import Memory
 
-## Docs
+# Create memory
+memory = Memory(agent_id="my-agent", workspace=Path("~/workspace"))
 
-| Doc | What's in it |
-|-----|-------------|
-| [Setup](docs/setup.md) | All install options (Copilot, OpenClaw, manual, template, fork) |
-| [How It Works](docs/how-it-works.md) | Knowledge flow, session logging, promotion workflow |
-| [Architecture](docs/architecture.md) | File structure, AGENTS.md and .agents.local.md templates |
-| [Agent Compatibility](docs/agent-compatibility.md) | Supported agents, Claude Code auto memory, subagent context |
-| [Research](docs/research.md) | Instruction budgets, Vercel evals, context lifecycle |
-| [Security](docs/security.md) | What's committed vs gitignored, team considerations |
-| [FAQ](docs/faq.md) | Common questions |
+# Append
+memory.append("Shipped v1.0.3 with security fixes")
 
-## Auto-Reflect
+# Search
+results = memory.search("security", limit=5)
 
-Agents can now observe during sessions and reflect at session end, automatically surfacing patterns worth promoting to `AGENTS.md`. Inspired by [Mastra's Observational Memory](https://mastra.ai/research/observational-memory), adapted for the file-based world — zero infrastructure, works with any agent.
+# Consolidate
+status = memory.check_consolidation_needed()
+if status["needed"]:
+    stats = memory.consolidate(days=7)
+    print(f"Compression: {stats.compression_ratio:.1f}:1")
+```
 
-→ [docs/auto-reflect.md](docs/auto-reflect.md)
+---
 
-## Auto-Consolidation (NEW)
+## Documentation
 
-**Automatic memory consolidation** inspired by [claude-code's auto-dream system](https://github.com/lowcortisolprogrammer/claude-code).
+- **[MEMORY.md](docs/MEMORY.md)** — Full documentation
+- **[Examples](examples/)** — Working code samples
+- **[Tests](tests/)** — Unit tests (19/19 passing)
 
-Daily logs are consolidated into topic files automatically when:
-- ≥24 hours since last consolidation
-- ≥5 sessions accumulated
-- No other consolidation in progress
+---
 
-**4-phase process:** Orient → Gather → Consolidate → Prune  
-**Compression:** ~9:1 ratio (107 KB → 11.6 KB validated)  
-**Structure:** Daily logs (append-only) + topic files (curated) + index (200 lines max)
+## API
 
-→ [docs/auto-consolidation.md](docs/auto-consolidation.md)
+| Method | Description |
+|--------|-------------|
+| `memory.append()` | Write to daily log (auto-timestamped) |
+| `memory.search()` | Keyword search with scoring |
+| `memory.get_index()` | Get context-ready index (<200 lines) |
+| `memory.check_consolidation_needed()` | Check time + session gates |
+| `memory.consolidate()` | 4-phase consolidation (Orient → Gather → Consolidate → Prune) |
+
+---
+
+## Why agent-context?
+
+**Compared to alternatives:**
+
+| Feature | agent-context | mempalace | mem0 | supermemory |
+|---------|---------------|-----------|------|-------------|
+| Offline | ✅ Yes | ✅ Yes | ⚠️ Optional | ❌ Cloud only |
+| Zero deps | ✅ Yes | ✅ Yes | ❌ No | ❌ No |
+| Compression | ✅ 9:1 | ❌ None | ⚠️ Optional | ✅ Yes |
+| Size limits | ✅ 200 lines | ❌ Unbounded | ❌ Unbounded | ✅ Cloud |
+| Audit logs | ✅ Append-only | ✅ Verbatim | ⚠️ Silent | ❌ No |
+| Cost | $0 | $0 | $0-$$$ | $$$ |
+
+**Best for:** Offline-first agents with context-window constraints and auditability requirements.
+
+---
+
+## Releases
+
+- **[v0.2.0](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.0)** — Full consolidation implementation (current)
+- **[v0.1.0](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.1.0)** — File-based core
+
+---
+
+## Roadmap
+
+- ✅ **Phase 1** (v0.1.0) — File-based core
+- ✅ **Phase 1.5** (v0.2.0) — Full consolidation
+- 🚧 **Phase 2** (v0.3.0) — Semantic search (sqlite-vec)
+- 📅 **Phase 3** — Multi-agent isolation
+- 📅 **Phase 4** — Pluggable backends
+
+---
+
+## Contributing
+
+Issues and PRs welcome! See [GitHub](https://github.com/AndreaGriffiths11/agent-context-system).
 
 ## License
 
-MIT
+Apache-2.0 — see [LICENSE](LICENSE) file.
+
+## Credits
+
+Built by Andrea Griffiths ([@acolombiadev](https://github.com/AndreaGriffiths11))
+
+Inspired by:
+- mempalace (verbatim storage)
+- mem0 (pluggable architecture)
+- OpenClaw's proven memory consolidation (9:1 compression)
+
+---
+
+**Project:** https://github.com/AndreaGriffiths11/agent-context-system  
+**Docs:** [docs/MEMORY.md](docs/MEMORY.md)  
+**Latest:** [v0.2.0](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.0)
