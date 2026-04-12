@@ -1,4 +1,4 @@
-name: Proof Agent
+name: Proof Agent Verification
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  models: read  # Required for GitHub Models API
 
 jobs:
   verify:
@@ -17,9 +18,13 @@ jobs:
         with:
           fetch-depth: 0
       
-      - uses: AndreaGriffiths11/proof-agent@v1.0.3
+      - name: Verify PR with Proof Agent
+        uses: AndreaGriffiths11/proof-agent@v1.0.7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          base-ref: ${{ github.event.pull_request.base.ref }}
+          models-token: ${{ secrets.GH_MODELS_TOKEN }}
+          base-ref: origin/main
+          force: true
           block-on-fail: true
           post-comment: true
+          comment-mode: collapse
