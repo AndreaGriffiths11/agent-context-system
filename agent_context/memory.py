@@ -275,16 +275,21 @@ class Memory:
     def consolidate(
         self,
         days: int = 7,
-        dry_run: bool = False
+        dry_run: bool = False,
+        llm_consolidate: bool = False
     ) -> Optional[ConsolidationStats]:
         """Run memory consolidation.
         
-        This is a manual/synchronous consolidation method.
-        For production use, call this via a spawned sub-agent session.
+        Consolidates daily logs into topic files using a 4-phase process:
+        1. Orient - Read index and existing topic files
+        2. Gather - Extract signal from recent daily logs
+        3. Consolidate - Merge into topics (LLM-based or rule-based)
+        4. Prune - Update index, enforce limits
         
         Args:
             days: Number of days of daily logs to consolidate
             dry_run: If True, don't make changes (just report stats)
+            llm_consolidate: If True, use LLM for consolidation (requires gh copilot)
         
         Returns:
             ConsolidationStats object (None if lock acquisition failed)
@@ -299,30 +304,57 @@ class Memory:
                 return stats
         
         try:
-            # Get daily logs from last N days
+            # Phase 1: Orient - Get current state
             daily_logs = self._get_daily_logs(days)
             stats.daily_logs_processed = len(daily_logs)
+            
+            topic_files = self._get_topic_files()
             
             # Calculate input size
             for log in daily_logs:
                 if log.exists():
                     stats.total_input_bytes += log.stat().st_size
             
-            # TODO: Implement actual consolidation logic
-            # For now, just report what would be consolidated
-            stats.errors.append("Consolidation logic not yet implemented (use via sub-agent session)")
+            # Phase 2: Gather - Extract signal from daily logs
+            daily_content = self._gather_daily_content(daily_logs)
             
-            # Check index size
+            if not daily_content.strip():
+                stats.errors.append("No content to consolidate")
+                return stats
+            
+            # Phase 3: Consolidate - Merge into topics
+            if llm_consolidate:
+                # LLM-based consolidation (requires gh copilot CLI)
+                consolidated = self._consolidate_with_llm(daily_content, topic_files)
+            else:
+                # Rule-based consolidation (simple merge)
+                consolidated = self._consolidate_rule_based(daily_content, topic_files)
+            
+            # Write consolidated content
+            if not dry_run and consolidated:
+                for filename, content in consolidated.items():
+                    topic_path = self.memory_dir / filename
+                    with open(topic_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+                    stats.total_output_bytes += len(content.encode("utf-8"))
+            
+            # Phase 4: Prune - Update index
+            if not dry_run:
+                self._prune_index()
+            
+            # Calculate final stats
             if self.index_file.exists():
                 with open(self.index_file, "r", encoding="utf-8") as f:
                     index_content = f.read()
                 stats.index_lines = len(index_content.strip().split("\n"))
                 stats.index_bytes = len(index_content.encode("utf-8"))
             
-            # Calculate compression ratio (if we had output)
             if stats.total_output_bytes > 0:
                 stats.compression_ratio = stats.total_input_bytes / stats.total_output_bytes
             
+        except Exception as e:
+            stats.errors.append(f"Consolidation failed: {str(e)}")
+        
         finally:
             if not dry_run:
                 self._release_lock()
@@ -438,3 +470,176 @@ class Memory:
         
         # Fall back to file modification time
         return datetime.fromtimestamp(file_path.stat().st_mtime)
+    
+    def _get_topic_files(self) -> List[Path]:
+        """Get topic files (non-daily-log markdown files)."""
+        topic_files = []
+        
+        for file in self.memory_dir.glob("*.md"):
+            # Skip daily logs (YYYY-MM-DD.md) and index (MEMORY.md)
+            if file == self.index_file:
+                continue
+            if len(file.stem) == 10 and file.stem.count("-") == 2:
+                continue
+            topic_files.append(file)
+        
+        return sorted(topic_files)
+    
+    def _gather_daily_content(self, daily_logs: List[Path]) -> str:
+        """Extract content from daily logs (remove boilerplate, timestamps)."""
+        content_parts = []
+        
+        for log in daily_logs:
+            try:
+                with open(log, "r", encoding="utf-8") as f:
+                    raw = f.read()
+                
+                # Remove file header (# Memory Log - YYYY-MM-DD)
+                lines = raw.split("\n")
+                filtered = []
+                
+                for line in lines:
+                    # Skip headers, timestamps, separators
+                    if line.startswith("# Memory Log"):
+                        continue
+                    if line.startswith("##") and ":" in line and "EDT" in line or "UTC" in line:
+                        continue
+                    if line.strip() == "---":
+                        continue
+                    
+                    filtered.append(line)
+                
+                content = "\n".join(filtered).strip()
+                if content:
+                    content_parts.append(f"## {log.stem}\n\n{content}")
+            
+            except Exception as e:
+                print(f"[WARN] Failed to read {log.name}: {e}")
+                continue
+        
+        return "\n\n".join(content_parts)
+    
+    def _consolidate_rule_based(
+        self,
+        daily_content: str,
+        topic_files: List[Path]
+    ) -> Dict[str, str]:
+        """Simple rule-based consolidation (merge all into consolidated.md)."""
+        # For now, just create a consolidated.md with all daily content
+        # Future: smart topic detection, de-duplication, etc.
+        
+        consolidated_path = self.memory_dir / "consolidated.md"
+        
+        # Read existing consolidated.md if exists
+        existing = ""
+        if consolidated_path.exists():
+            with open(consolidated_path, "r", encoding="utf-8") as f:
+                existing = f.read()
+        
+        # Append new content
+        new_content = f"{existing}\n\n# Consolidated Memory\n\n{daily_content}"
+        
+        return {"consolidated.md": new_content}
+    
+    def _consolidate_with_llm(
+        self,
+        daily_content: str,
+        topic_files: List[Path]
+    ) -> Dict[str, str]:
+        """LLM-based consolidation (requires gh copilot CLI)."""
+        import subprocess
+        
+        # Build prompt
+        topic_content = ""
+        for topic in topic_files:
+            with open(topic, "r", encoding="utf-8") as f:
+                topic_content += f"\n## {topic.name}\n{f.read()}\n"
+        
+        prompt = f"""Consolidate these daily memory logs into topic files.
+
+Daily logs (last 7 days):
+{daily_content}
+
+Existing topic files:
+{topic_content}
+
+Tasks:
+1. Merge new entries into existing topics
+2. De-duplicate similar facts
+3. Convert relative dates ("yesterday") to absolute (YYYY-MM-DD)
+4. Create new topic files only when necessary
+
+Return a JSON object mapping filename -> content:
+{{
+  "projects.md": "# Projects\\n...",
+  "decisions.md": "# Decisions\\n..."
+}}
+"""
+        
+        try:
+            result = subprocess.run(
+                ["gh", "copilot", "suggest", "-t", "shell"],
+                input=prompt,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                # Parse JSON response
+                response = result.stdout.strip()
+                # Extract JSON from response (may be wrapped in markdown)
+                if "```json" in response:
+                    start = response.find("```json") + 7
+                    end = response.find("```", start)
+                    response = response[start:end].strip()
+                
+                return json.loads(response)
+            else:
+                print(f"[WARN] LLM consolidation failed: {result.stderr}")
+                return self._consolidate_rule_based(daily_content, topic_files)
+        
+        except Exception as e:
+            print(f"[WARN] LLM consolidation error: {e}")
+            return self._consolidate_rule_based(daily_content, topic_files)
+    
+    def _prune_index(self):
+        """Prune MEMORY.md to stay under limits (200 lines / 25KB)."""
+        if not self.index_file.exists():
+            return
+        
+        with open(self.index_file, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        lines = content.strip().split("\n")
+        bytes_count = len(content.encode("utf-8"))
+        
+        if len(lines) <= self.max_index_lines and bytes_count <= self.max_index_bytes:
+            return  # Already under limits
+        
+        # Simple pruning: keep header + first N entries
+        # Future: smarter pruning (keep recent, important, frequently accessed)
+        
+        pruned_lines = []
+        in_header = True
+        entry_count = 0
+        max_entries = int(self.max_index_lines * 0.8)  # Leave room for headers
+        
+        for line in lines:
+            # Keep headers
+            if line.startswith("#"):
+                pruned_lines.append(line)
+                in_header = False
+                continue
+            
+            # Keep entries up to limit
+            if line.startswith("-") and entry_count < max_entries:
+                pruned_lines.append(line)
+                entry_count += 1
+            elif not line.startswith("-"):
+                pruned_lines.append(line)  # Keep blank lines, section headers
+        
+        pruned_content = "\n".join(pruned_lines)
+        
+        with open(self.index_file, "w", encoding="utf-8") as f:
+            f.write(pruned_content)
