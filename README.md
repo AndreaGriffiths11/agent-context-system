@@ -123,3 +123,7 @@ Inspired by:
 **Project:** https://github.com/AndreaGriffiths11/agent-context-system  
 **Docs:** [docs/MEMORY.md](docs/MEMORY.md)  
 **Latest:** [v0.2.0](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.0)
+
+## Download History
+
+[![Download History](https://skill-history.com/chart/andreagriffiths11/agent-context-system.svg)](https://skill-history.com/andreagriffiths11/agent-context-system)
