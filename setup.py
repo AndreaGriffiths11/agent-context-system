@@ -9,7 +9,7 @@ long_description = readme_file.read_text(encoding="utf-8") if readme_file.exists
 
 setup(
     name="agent-context",
-    version="0.2.0",
+    version="0.2.1",
     description="Production-tested memory system for AI agents",
     long_description=long_description,
     long_description_content_type="text/markdown",

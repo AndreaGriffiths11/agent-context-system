@@ -166,8 +166,9 @@ class TestMemory:
     
     def test_consolidate_dry_run(self, memory):
         """consolidate() dry_run doesn't modify files."""
-        memory.append("Entry 1", date="2026-04-11")
-        memory.append("Entry 2", date="2026-04-12")
+        today = datetime.now()
+        memory.append("Entry 1", date=(today - timedelta(days=1)).strftime("%Y-%m-%d"))
+        memory.append("Entry 2", date=today.strftime("%Y-%m-%d"))
         
         stats = memory.consolidate(days=7, dry_run=True)
         
