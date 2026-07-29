@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
       
       - name: Verify PR with Proof Agent
-        uses: AndreaGriffiths11/proof-agent@main
+        uses: AndreaGriffiths11/proof-agent@v1.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           base-ref: origin/main
