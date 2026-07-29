@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
       
       - name: Verify PR with Proof Agent
-        uses: AndreaGriffiths11/proof-agent@copilot-sdk-verification
+        uses: AndreaGriffiths11/proof-agent@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           base-ref: origin/main
