@@ -86,7 +86,7 @@ if status["needed"]:
 
 ## Releases
 
-- **[v0.2.1](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.1)** — Proof Agent workflow pinned to Copilot SDK release (current)
+- **[v0.2.1](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.1)** — Proof Agent workflow pinned to Copilot SDK auth-fix release (current)
 - **[v0.2.0](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.0)** — Full consolidation implementation
 - **[v0.1.0](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.1.0)** — File-based core
 
