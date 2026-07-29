@@ -1,0 +1,1 @@
+Proof Agent smoke test file B.
