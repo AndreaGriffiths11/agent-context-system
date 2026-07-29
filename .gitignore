@@ -1,3 +1,12 @@
 # Local agent scratchpad — never commit
 .agents.local.md
 .agents.local.md.backup.*
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
