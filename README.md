@@ -2,7 +2,7 @@
 
 **Production-tested memory system for AI agents**
 
-[![Version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.1)
+[![Version](https://img.shields.io/badge/version-0.2.2-blue)](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.2)
 [![Tests](https://img.shields.io/badge/tests-19%2F19%20passing-green)](https://github.com/AndreaGriffiths11/agent-context-system/tree/main/tests)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install git+https://github.com/AndreaGriffiths11/agent-context-system.git@v0.2.1
+pip install git+https://github.com/AndreaGriffiths11/agent-context-system.git@v0.2.2
 ```
 
 ```python
@@ -86,7 +86,7 @@ if status["needed"]:
 
 ## Releases
 
-- **[v0.2.1](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.1)** — Proof Agent workflow pinned to Copilot SDK release (current)
+- **[v0.2.2](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.2)** — Proof Agent workflow pinned to `proof-agent@v1.1.2` (current)
 - **[v0.2.0](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.0)** — Full consolidation implementation
 - **[v0.1.0](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.1.0)** — File-based core
 
@@ -123,4 +123,4 @@ Inspired by:
 
 **Project:** https://github.com/AndreaGriffiths11/agent-context-system  
 **Docs:** [docs/MEMORY.md](docs/MEMORY.md)  
-**Latest:** [v0.2.1](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.1)
+**Latest:** [v0.2.2](https://github.com/AndreaGriffiths11/agent-context-system/releases/tag/v0.2.2)
