@@ -19,7 +19,7 @@ Project: https://github.com/AndreaGriffiths11/agent-context-system
 License: Apache-2.0
 """
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 from .memory import Memory, MemoryEntry, ConsolidationStats
 
