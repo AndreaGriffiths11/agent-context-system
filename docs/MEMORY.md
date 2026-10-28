@@ -216,6 +216,31 @@ if status["needed"]:
 
 **Lock mechanism:** Prevents concurrent consolidation runs.
 
+### Sliding Window with Per-Message Decay
+
+For long-running sessions, `SlidingWindow` keeps recent messages at full fidelity and progressively compresses older ones. Messages are stored in full; compression happens at render time, so no source data is lost.
+
+```python
+from agent_context import SlidingWindow
+
+window = SlidingWindow(max_messages=50, full_fidelity=5)
+evicted = window.add("user", "Deploy proof-agent v1.0.3 to staging")
+window.add("assistant", "Deployed. All checks passed.")
+
+for msg in window.render():  # oldest first
+    print(msg.age, f"{msg.fidelity:.2f}", msg.content)
+
+prompt = window.to_text()
+```
+
+- `full_fidelity`: newest N messages are never compressed.
+- `decay(age, full_fidelity) -> float`: fidelity in `[0, 1]` (age 0 = newest). Default `harmonic_decay` returns `1.0` inside the full-fidelity window, then `full_fidelity / (age + 1)`.
+- `compressor(content, fidelity) -> str`: default `truncate_compressor` keeps the first `fidelity` share of the text, cut on a word boundary.
+- `min_fidelity`: messages below this fidelity are dropped from `render()`.
+- `max_messages`: oldest messages are evicted once exceeded; `add()` returns them.
+
+Pass your own `decay` or `compressor` callable to change the behavior.
+
 ## API Reference
 
 ### Memory Class
