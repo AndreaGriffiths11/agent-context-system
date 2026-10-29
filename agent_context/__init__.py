@@ -27,6 +27,11 @@ from .window import (
     Message,
     CompressedMessage,
     harmonic_decay,
+    linear_decay,
+    exponential_decay,
+    importance_weighted,
+    get_decay,
+    DECAY_CURVES,
     truncate_compressor,
 )
 
@@ -38,5 +43,10 @@ __all__ = [
     "Message",
     "CompressedMessage",
     "harmonic_decay",
+    "linear_decay",
+    "exponential_decay",
+    "importance_weighted",
+    "get_decay",
+    "DECAY_CURVES",
     "truncate_compressor",
 ]

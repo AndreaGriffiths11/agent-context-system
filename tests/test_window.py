@@ -3,7 +3,12 @@
 import pytest
 from agent_context import (
     SlidingWindow,
+    DECAY_CURVES,
+    exponential_decay,
+    get_decay,
     harmonic_decay,
+    importance_weighted,
+    linear_decay,
     truncate_compressor,
 )
 
@@ -20,6 +25,114 @@ class TestHarmonicDecay:
 
     def test_zero_full_fidelity(self):
         assert harmonic_decay(0, 0) == 0.0
+
+
+class TestLinearDecay:
+    def test_full_fidelity_window(self):
+        d = linear_decay(span=4)
+        assert [d(age, 3) for age in range(3)] == [1.0, 1.0, 1.0]
+
+    def test_equal_steps_to_zero(self):
+        d = linear_decay(span=4)
+        assert [d(age, 2) for age in range(2, 8)] == [0.75, 0.5, 0.25, 0.0, 0.0, 0.0]
+
+    def test_invalid_span(self):
+        with pytest.raises(ValueError):
+            linear_decay(span=0)
+
+
+class TestExponentialDecay:
+    def test_full_fidelity_window(self):
+        d = exponential_decay(half_life=2)
+        assert d(0, 2) == 1.0 and d(1, 2) == 1.0
+
+    def test_halves_every_half_life(self):
+        d = exponential_decay(half_life=2)
+        assert d(3, 2) == pytest.approx(0.5)
+        assert d(5, 2) == pytest.approx(0.25)
+        assert 0 < d(50, 2) < 1e-6
+
+    def test_monotonic(self):
+        d = exponential_decay(half_life=3)
+        values = [d(age, 1) for age in range(1, 20)]
+        assert values == sorted(values, reverse=True)
+
+    def test_invalid_half_life(self):
+        with pytest.raises(ValueError):
+            exponential_decay(half_life=0)
+
+
+class TestImportanceWeighted:
+    def test_no_importance_matches_base(self):
+        d = importance_weighted()
+        for age in range(12):
+            assert d(age, 3, {}) == harmonic_decay(age, 3)
+            assert d(age, 3) == harmonic_decay(age, 3)
+
+    def test_full_importance_never_decays(self):
+        d = importance_weighted(base=linear_decay(span=2))
+        assert d(100, 1, {"importance": 1.0}) == 1.0
+
+    def test_partial_importance_lifts_base(self):
+        d = importance_weighted(base=linear_decay(span=4))
+        # base at age 3, full=2 -> 0.5; lifted halfway by importance 0.5
+        assert d(3, 2, {"importance": 0.5}) == pytest.approx(0.75)
+
+    def test_importance_clamped_and_invalid_ignored(self):
+        d = importance_weighted(base=linear_decay(span=2))
+        assert d(5, 0, {"importance": 7}) == 1.0
+        assert d(5, 0, {"importance": -3}) == 0.0
+        assert d(5, 0, {"importance": "high"}) == 0.0
+
+    def test_custom_key_and_default(self):
+        d = importance_weighted(base=linear_decay(span=2), key="pin", default=1.0)
+        assert d(5, 0, {}) == 1.0
+        assert d(5, 0, {"pin": 0}) == 0.0
+
+    def test_invalid_default(self):
+        with pytest.raises(ValueError):
+            importance_weighted(default=1.5)
+
+    def test_window_passes_metadata(self):
+        w = SlidingWindow(
+            full_fidelity=1,
+            decay=importance_weighted(base=linear_decay(span=1)),
+        )
+        w.add("user", "pinned fact", metadata={"importance": 1.0})
+        w.add("user", "chatter")
+        w.add("user", "latest")
+        assert [m.content for m in w.render()] == ["pinned fact", "latest"]
+
+
+class TestGetDecay:
+    def test_registry_names(self):
+        assert set(DECAY_CURVES) == {"harmonic", "linear", "exponential", "importance"}
+
+    def test_harmonic_is_default_function(self):
+        assert get_decay("harmonic") is harmonic_decay
+
+    def test_kwargs_forwarded(self):
+        assert get_decay("linear", span=4)(2, 2) == 0.75
+        assert get_decay("exponential", half_life=1)(0, 0) == pytest.approx(0.5)
+
+    def test_importance_base_by_name(self):
+        d = get_decay("importance", base="linear", key="w")
+        assert d(20, 0, {"w": 0.0}) == 0.0
+        assert d(20, 0, {"w": 1.0}) == 1.0
+
+    def test_unknown_name(self):
+        with pytest.raises(ValueError):
+            get_decay("cubic")
+
+    def test_window_accepts_curve_name(self):
+        w = SlidingWindow(full_fidelity=2, decay="exponential")
+        assert w.fidelity(1) == 1.0
+        assert w.fidelity(6) == pytest.approx(0.5)
+
+    def test_default_window_still_harmonic(self):
+        w = SlidingWindow(full_fidelity=3)
+        assert w.decay is harmonic_decay
+        assert [w.fidelity(a) for a in range(8)] == [harmonic_decay(a, 3) for a in range(8)]
 
 
 class TestTruncateCompressor:
