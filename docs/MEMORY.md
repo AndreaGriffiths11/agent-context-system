@@ -265,6 +265,25 @@ window.add("user", "Prod DB is read-only on Fridays", metadata={"importance": 1.
 
 Importance-weighted decay reads `metadata["importance"]` (clamped to `[0, 1]`). Messages without it follow `base` unchanged. Custom callables can set `fn.uses_metadata = True` to receive `(age, full_fidelity, metadata)`.
 
+#### Summary Checkpointing (opt-in)
+
+When `max_messages` evicts messages, the window can summarize them into `Checkpoint`s instead of dropping them silently. It is off by default; existing behavior is unchanged unless you enable it.
+
+```python
+from agent_context import SlidingWindow
+
+window = SlidingWindow(max_messages=20, checkpoint=True)          # default summarizer
+window = SlidingWindow(max_messages=20, summarizer=my_llm_summary) # custom (also enables it)
+
+window.checkpoints        # List[Checkpoint(summary, message_count, start, end, created_at)]
+window.pending            # evicted messages not yet summarized
+window.flush_checkpoint() # summarize pending now, e.g. at session end
+window.to_text()          # "summary: ..." lines first, then the window
+```
+
+- `summarizer(messages) -> str`: receives the evicted `Message`s oldest-first. Default `default_summarizer` emits one `role: snippet` line per message (~80 chars each).
+- `checkpoint_every`: evicted messages per checkpoint. Defaults to `max_messages`, so one checkpoint is written each time a full window has rolled out.
+- `render()` is unaffected; only `to_text()` prepends checkpoint summaries.
 ## API Reference
 
 ### Memory Class

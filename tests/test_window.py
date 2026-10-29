@@ -1,8 +1,12 @@
 """Tests for agent_context.window module."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from agent_context import (
+    Message,
     SlidingWindow,
+    default_summarizer,
     DECAY_CURVES,
     exponential_decay,
     get_decay,
@@ -235,3 +239,98 @@ class TestSlidingWindow:
         w.add("user", "hi")
         w.add("assistant", "hello")
         assert w.to_text() == "user: hi\nassistant: hello"
+
+
+class TestDefaultSummarizer:
+    def test_one_line_per_message(self):
+        msgs = [Message("user", "deploy\nstaging"), Message("assistant", "done")]
+        assert default_summarizer(msgs) == "user: deploy staging\nassistant: done"
+
+    def test_long_content_truncated(self):
+        text = " ".join(f"word{i}" for i in range(100))
+        out = default_summarizer([Message("user", text)], max_chars=40)
+        assert out.startswith("user: word0")
+        assert out.endswith("…")
+        assert len(out) < len("user: ") + 45
+
+
+class TestCheckpointing:
+    def test_disabled_by_default(self):
+        w = SlidingWindow(max_messages=2)
+        for i in range(5):
+            w.add("user", f"m{i}")
+        assert w.checkpointing is False
+        assert w.checkpoints == []
+        assert w.pending == []
+        assert w.flush_checkpoint() is None
+        assert w.to_text() == "user: m3\nuser: m4"
+
+    def test_checkpoint_at_window_boundary(self):
+        w = SlidingWindow(max_messages=3, full_fidelity=3, checkpoint=True)
+        for i in range(5):
+            w.add("user", f"m{i}")
+        # two evicted, boundary is 3 -> still pending
+        assert w.checkpoints == []
+        assert [m.content for m in w.pending] == ["m0", "m1"]
+        evicted = w.add("user", "m5")
+        assert [m.content for m in evicted] == ["m2"]
+        assert len(w.checkpoints) == 1
+        cp = w.checkpoints[0]
+        assert cp.message_count == 3
+        assert cp.summary == "user: m0\nuser: m1\nuser: m2"
+        assert w.pending == []
+
+    def test_checkpoint_timestamps(self):
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        w = SlidingWindow(max_messages=1, checkpoint=True, checkpoint_every=2)
+        for i in range(3):
+            w.add("user", f"m{i}", timestamp=t0 + timedelta(minutes=i))
+        cp = w.checkpoints[0]
+        assert (cp.start, cp.end) == (t0, t0 + timedelta(minutes=1))
+
+    def test_custom_summarizer_enables_checkpointing(self):
+        batches = []
+
+        def summarize(msgs):
+            batches.append([m.content for m in msgs])
+            return f"{len(msgs)} msgs"
+
+        w = SlidingWindow(max_messages=2, summarizer=summarize, checkpoint_every=1)
+        for i in range(4):
+            w.add("user", f"m{i}")
+        assert w.checkpointing
+        assert batches == [["m0"], ["m1"]]
+        assert [c.summary for c in w.checkpoints] == ["1 msgs", "1 msgs"]
+
+    def test_flush_pending(self):
+        w = SlidingWindow(max_messages=2, checkpoint=True, checkpoint_every=5)
+        for i in range(4):
+            w.add("user", f"m{i}")
+        cp = w.flush_checkpoint()
+        assert cp is not None and cp.message_count == 2
+        assert w.pending == []
+        assert w.flush_checkpoint() is None
+
+    def test_to_text_includes_summaries_first(self):
+        w = SlidingWindow(max_messages=1, full_fidelity=1, checkpoint=True)
+        w.add("user", "old")
+        w.add("user", "new")
+        assert w.to_text() == "summary: user: old\nuser: new"
+
+    def test_render_unchanged_by_checkpointing(self):
+        a = SlidingWindow(max_messages=3, full_fidelity=1)
+        b = SlidingWindow(max_messages=3, full_fidelity=1, checkpoint=True)
+        for i in range(6):
+            a.add("user", f"message number {i}")
+            b.add("user", f"message number {i}")
+        assert [m.content for m in a.render()] == [m.content for m in b.render()]
+
+    def test_unbounded_window_never_checkpoints(self):
+        w = SlidingWindow(checkpoint=True)
+        for i in range(10):
+            w.add("user", f"m{i}")
+        assert w.checkpoints == []
+
+    def test_invalid_checkpoint_every(self):
+        with pytest.raises(ValueError):
+            SlidingWindow(checkpoint=True, checkpoint_every=0)

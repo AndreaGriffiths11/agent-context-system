@@ -24,6 +24,11 @@ Built-in decay curves:
     exponential_decay(half_life)    halves every `half_life` messages
     importance_weighted(base)       lifts `base` by metadata["importance"]
     get_decay(name, **kwargs)       look up a curve by name
+
+Summary checkpointing (opt-in):
+    window = SlidingWindow(max_messages=20, checkpoint=True)
+    # Evicted messages are batched and summarized into window.checkpoints.
+    summarizer: Callable[[List[Message]], str]  -> summary text
 """
 
 import math
@@ -176,6 +181,34 @@ def truncate_compressor(content: str, fidelity: float) -> str:
     return cut.rstrip() + "…"
 
 
+Summarizer = Callable[[List[Message]], str]
+
+
+@dataclass
+class Checkpoint:
+    """A summary of messages that left the window."""
+    summary: str
+    message_count: int
+    start: datetime
+    end: datetime
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+def default_summarizer(messages: List[Message], max_chars: int = 80) -> str:
+    """Default summarizer: one `role: snippet` line per message.
+
+    Each snippet is the message content collapsed to one line and truncated
+    to roughly `max_chars` characters with truncate_compressor.
+    """
+    lines = []
+    for msg in messages:
+        text = " ".join(msg.content.split())
+        if len(text) > max_chars:
+            text = truncate_compressor(text, max_chars / len(text))
+        lines.append(f"{msg.role}: {text}")
+    return "\n".join(lines)
+
+
 class SlidingWindow:
     """Sliding window of messages with per-message decay.
 
@@ -194,6 +227,13 @@ class SlidingWindow:
         compressor: Maps (content, fidelity) to compressed content.
         min_fidelity: Messages whose fidelity falls below this are omitted
             from render().
+        checkpoint: Enable summary checkpointing of evicted messages.
+            Off by default. Passing `summarizer` also enables it.
+        summarizer: Maps a list of evicted messages to summary text.
+            Defaults to default_summarizer.
+        checkpoint_every: Number of evicted messages per checkpoint.
+            Defaults to max_messages, i.e. one checkpoint each time a full
+            window's worth of messages has rolled out.
     """
 
     def __init__(
@@ -203,6 +243,9 @@ class SlidingWindow:
         decay: Optional[Union[DecayFn, str]] = None,
         compressor: Optional[Compressor] = None,
         min_fidelity: float = 0.0,
+        checkpoint: bool = False,
+        summarizer: Optional[Summarizer] = None,
+        checkpoint_every: Optional[int] = None,
     ):
         if isinstance(decay, str):
             decay = get_decay(decay)
@@ -210,12 +253,19 @@ class SlidingWindow:
             raise ValueError("max_messages must be >= 1 or None")
         if full_fidelity < 0:
             raise ValueError("full_fidelity must be >= 0")
+        if checkpoint_every is not None and checkpoint_every < 1:
+            raise ValueError("checkpoint_every must be >= 1 or None")
         self.max_messages = max_messages
         self.full_fidelity = full_fidelity
         self.decay = decay or harmonic_decay
         self.compressor = compressor or truncate_compressor
         self.min_fidelity = min_fidelity
         self.messages: List[Message] = []
+        self.checkpointing = checkpoint or summarizer is not None
+        self.summarizer = summarizer or default_summarizer
+        self.checkpoint_every = checkpoint_every or max_messages or 1
+        self.checkpoints: List[Checkpoint] = []
+        self._pending: List[Message] = []
 
     def __len__(self) -> int:
         return len(self.messages)
@@ -238,7 +288,39 @@ class SlidingWindow:
             overflow = len(self.messages) - self.max_messages
             evicted = self.messages[:overflow]
             self.messages = self.messages[overflow:]
+        if evicted and self.checkpointing:
+            self._pending.extend(evicted)
+            while len(self._pending) >= self.checkpoint_every:
+                batch = self._pending[:self.checkpoint_every]
+                self._pending = self._pending[self.checkpoint_every:]
+                self._make_checkpoint(batch)
         return evicted
+
+    def _make_checkpoint(self, batch: List[Message]) -> Checkpoint:
+        cp = Checkpoint(
+            summary=self.summarizer(list(batch)),
+            message_count=len(batch),
+            start=batch[0].timestamp,
+            end=batch[-1].timestamp,
+        )
+        self.checkpoints.append(cp)
+        return cp
+
+    @property
+    def pending(self) -> List[Message]:
+        """Evicted messages not yet summarized into a checkpoint."""
+        return list(self._pending)
+
+    def flush_checkpoint(self) -> Optional[Checkpoint]:
+        """Summarize any pending evicted messages now, e.g. at session end.
+
+        Returns the new checkpoint, or None if nothing was pending or
+        checkpointing is disabled.
+        """
+        if not self.checkpointing or not self._pending:
+            return None
+        batch, self._pending = self._pending, []
+        return self._make_checkpoint(batch)
 
     def fidelity(self, age: int, metadata: Optional[Dict[str, Any]] = None) -> float:
         """Fidelity for a message of the given age, clamped to [0, 1]."""
@@ -269,5 +351,11 @@ class SlidingWindow:
         return out
 
     def to_text(self) -> str:
-        """Render the window as plain text, one `role: content` per message."""
-        return "\n".join(f"{m.role}: {m.content}" for m in self.render())
+        """Render the window as plain text, one `role: content` per message.
+
+        When checkpointing is enabled, checkpoint summaries come first, each
+        prefixed with `summary:`.
+        """
+        lines = [f"summary: {cp.summary}" for cp in self.checkpoints]
+        lines.extend(f"{m.role}: {m.content}" for m in self.render())
+        return "\n".join(lines)
