@@ -22,9 +22,21 @@ License: Apache-2.0
 __version__ = "0.2.2"
 
 from .memory import Memory, MemoryEntry, ConsolidationStats
+from .window import (
+    SlidingWindow,
+    Message,
+    CompressedMessage,
+    harmonic_decay,
+    truncate_compressor,
+)
 
 __all__ = [
     "Memory",
     "MemoryEntry",
     "ConsolidationStats",
+    "SlidingWindow",
+    "Message",
+    "CompressedMessage",
+    "harmonic_decay",
+    "truncate_compressor",
 ]
