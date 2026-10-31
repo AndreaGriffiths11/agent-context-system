@@ -241,6 +241,30 @@ prompt = window.to_text()
 
 Pass your own `decay` or `compressor` callable to change the behavior.
 
+#### Decay Curves
+
+Built-in curves plug into `decay` (pass a callable or a name). All keep `1.0` inside the `full_fidelity` window.
+
+| Curve | Factory | Name for `get_decay` / `decay=` | Shape past the window |
+|-------|---------|---------------------------------|-----------------------|
+| Harmonic (default) | `harmonic_decay` | `"harmonic"` | `full_fidelity / (age + 1)` |
+| Linear | `linear_decay(span=10)` | `"linear"` | Equal steps, `0` after `span` messages |
+| Exponential | `exponential_decay(half_life=5)` | `"exponential"` | Halves every `half_life` messages |
+| Importance-weighted | `importance_weighted(base=None, key="importance", default=0.0)` | `"importance"` | `base + (1 - base) * importance` |
+
+```python
+from agent_context import SlidingWindow, exponential_decay, importance_weighted, get_decay
+
+SlidingWindow(decay=exponential_decay(half_life=3))
+SlidingWindow(decay="linear")                                  # default span
+SlidingWindow(decay=get_decay("importance", base="exponential"))
+
+window = SlidingWindow(full_fidelity=2, decay=importance_weighted())
+window.add("user", "Prod DB is read-only on Fridays", metadata={"importance": 1.0})  # never decays
+```
+
+Importance-weighted decay reads `metadata["importance"]` (clamped to `[0, 1]`). Messages without it follow `base` unchanged. Custom callables can set `fn.uses_metadata = True` to receive `(age, full_fidelity, metadata)`.
+
 ## API Reference
 
 ### Memory Class

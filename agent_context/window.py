@@ -17,12 +17,19 @@ Usage:
 Extension points:
     decay:      Callable[[age, full_fidelity], float]  -> fidelity in [0, 1]
     compressor: Callable[[content, fidelity], str]     -> compressed content
+
+Built-in decay curves:
+    harmonic_decay                  default, full_fidelity / (age + 1)
+    linear_decay(span)              straight line to 0 over `span` messages
+    exponential_decay(half_life)    halves every `half_life` messages
+    importance_weighted(base)       lifts `base` by metadata["importance"]
+    get_decay(name, **kwargs)       look up a curve by name
 """
 
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Callable, Dict, Any, List, Optional
+from typing import Callable, Dict, Any, List, Optional, Union
 
 DecayFn = Callable[[int, int], float]
 Compressor = Callable[[str, float], str]
@@ -65,6 +72,90 @@ def harmonic_decay(age: int, full_fidelity: int) -> float:
     return full_fidelity / (age + 1)
 
 
+def linear_decay(span: int = 10) -> DecayFn:
+    """Linear decay: fidelity drops in equal steps and reaches 0 after `span`
+    messages past the full-fidelity window (at age full_fidelity + span - 1).
+    """
+    if span < 1:
+        raise ValueError("span must be >= 1")
+
+    def decay(age: int, full_fidelity: int) -> float:
+        if age < full_fidelity:
+            return 1.0
+        return max(0.0, 1.0 - (age - full_fidelity + 1) / span)
+
+    return decay
+
+
+def exponential_decay(half_life: float = 5.0) -> DecayFn:
+    """Exponential decay: fidelity halves every `half_life` messages past the
+    full-fidelity window. Never reaches 0.
+    """
+    if half_life <= 0:
+        raise ValueError("half_life must be > 0")
+
+    def decay(age: int, full_fidelity: int) -> float:
+        if age < full_fidelity:
+            return 1.0
+        return 0.5 ** ((age - full_fidelity + 1) / half_life)
+
+    return decay
+
+
+def importance_weighted(
+    base: Optional[DecayFn] = None,
+    key: str = "importance",
+    default: float = 0.0,
+) -> DecayFn:
+    """Importance-weighted decay: important messages decay more slowly.
+
+    Reads `metadata[key]` (clamped to [0, 1], `default` when missing) and
+    lifts the base curve toward full fidelity:
+
+        fidelity = base + (1 - base) * importance
+
+    importance 0 follows `base` exactly; importance 1 never decays.
+    With the default `default=0.0`, messages without importance metadata
+    behave exactly like `base`.
+    """
+    base_fn = base or harmonic_decay
+    if not 0.0 <= default <= 1.0:
+        raise ValueError("default must be in [0, 1]")
+
+    def decay(age: int, full_fidelity: int, metadata: Optional[Dict[str, Any]] = None) -> float:
+        b = max(0.0, min(1.0, float(base_fn(age, full_fidelity))))
+        raw = (metadata or {}).get(key, default)
+        try:
+            importance = max(0.0, min(1.0, float(raw)))
+        except (TypeError, ValueError):
+            importance = default
+        return b + (1.0 - b) * importance
+
+    decay.uses_metadata = True  # type: ignore[attr-defined]
+    return decay
+
+
+DECAY_CURVES: Dict[str, Callable[..., DecayFn]] = {
+    "harmonic": lambda: harmonic_decay,
+    "linear": linear_decay,
+    "exponential": exponential_decay,
+    "importance": importance_weighted,
+}
+
+
+def get_decay(name: str, **kwargs: Any) -> DecayFn:
+    """Build a decay curve by name, e.g. get_decay("exponential", half_life=3).
+
+    For "importance", `base` may itself be a curve name or a callable.
+    """
+    factory = DECAY_CURVES.get(name)
+    if factory is None:
+        raise ValueError(f"unknown decay curve {name!r}; choose from {sorted(DECAY_CURVES)}")
+    if name == "importance" and isinstance(kwargs.get("base"), str):
+        kwargs["base"] = get_decay(kwargs["base"])
+    return factory(**kwargs)
+
+
 def truncate_compressor(content: str, fidelity: float) -> str:
     """Default compressor: keep the first `fidelity` share of the content.
 
@@ -96,7 +187,10 @@ class SlidingWindow:
             None means unbounded.
         full_fidelity: Number of newest messages kept uncompressed by the
             default decay function.
-        decay: Maps (age, full_fidelity) to a fidelity in [0, 1].
+        decay: Maps (age, full_fidelity) to a fidelity in [0, 1], or the
+            name of a built-in curve ("harmonic", "linear", "exponential",
+            "importance"). Callables with `uses_metadata = True` also
+            receive the message metadata as a third argument.
         compressor: Maps (content, fidelity) to compressed content.
         min_fidelity: Messages whose fidelity falls below this are omitted
             from render().
@@ -106,10 +200,12 @@ class SlidingWindow:
         self,
         max_messages: Optional[int] = None,
         full_fidelity: int = 5,
-        decay: Optional[DecayFn] = None,
+        decay: Optional[Union[DecayFn, str]] = None,
         compressor: Optional[Compressor] = None,
         min_fidelity: float = 0.0,
     ):
+        if isinstance(decay, str):
+            decay = get_decay(decay)
         if max_messages is not None and max_messages < 1:
             raise ValueError("max_messages must be >= 1 or None")
         if full_fidelity < 0:
@@ -144,9 +240,13 @@ class SlidingWindow:
             self.messages = self.messages[overflow:]
         return evicted
 
-    def fidelity(self, age: int) -> float:
+    def fidelity(self, age: int, metadata: Optional[Dict[str, Any]] = None) -> float:
         """Fidelity for a message of the given age, clamped to [0, 1]."""
-        return max(0.0, min(1.0, float(self.decay(age, self.full_fidelity))))
+        if getattr(self.decay, "uses_metadata", False):
+            value = self.decay(age, self.full_fidelity, metadata or {})  # type: ignore[call-arg]
+        else:
+            value = self.decay(age, self.full_fidelity)
+        return max(0.0, min(1.0, float(value)))
 
     def render(self) -> List[CompressedMessage]:
         """Return messages oldest-first with decay applied."""
@@ -154,7 +254,7 @@ class SlidingWindow:
         out: List[CompressedMessage] = []
         for i, msg in enumerate(self.messages):
             age = total - 1 - i
-            fid = self.fidelity(age)
+            fid = self.fidelity(age, msg.metadata)
             if fid <= 0.0 or fid < self.min_fidelity:
                 continue
             out.append(CompressedMessage(
