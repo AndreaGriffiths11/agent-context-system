@@ -33,6 +33,8 @@ from .window import (
     get_decay,
     DECAY_CURVES,
     truncate_compressor,
+    Checkpoint,
+    default_summarizer,
 )
 
 __all__ = [
@@ -49,4 +51,6 @@ __all__ = [
     "get_decay",
     "DECAY_CURVES",
     "truncate_compressor",
+    "Checkpoint",
+    "default_summarizer",
 ]
